@@ -54,7 +54,7 @@ npm install
 cp .env.example .env.local   # Supabase URL, anon key, API URL 입력
 
 npm run dev
-# → http://localhost:3000
+# → http://localhost:3001
 ```
 
 ### 4. DB 마이그레이션
