@@ -4,7 +4,9 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
   },
-  devIndicators: false,
+  devIndicators: {
+    buildActivity: false,
+  },
 };
 
 export default nextConfig;
