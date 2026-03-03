@@ -1,0 +1,40 @@
+version: "3.9"
+
+# Local dev only — runs Redis.
+# FastAPI and Next.js run natively (hot-reload).
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Uncomment to run API in Docker (optional)
+  # api:
+  #   build: ./api
+  #   env_file: ./api/.env
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Uncomment to run Celery worker in Docker (optional)
+  # worker:
+  #   build: ./api
+  #   env_file: ./api/.env
+  #   depends_on:
+  #     redis:
+  #       condition: service_healthy
+  #   command: celery -A worker.celery_app worker --loglevel=info -Q default
+
+volumes:
+  redis_data:
