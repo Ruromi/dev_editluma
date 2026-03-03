@@ -126,6 +126,16 @@ Supabase 대시보드 → SQL Editor에서 추가 실행:
 supabase/migrations/0002_add_mode_prompt.sql
 ```
 
+## 로컬 트러블슈팅
+
+| 증상 | 원인 | 해결 |
+|------|------|------|
+| `Cannot find module './NNN.js'` / 500 | `.next` 캐시 손상 (서버 강제 종료 후 발생) | `rm -rf web/.next && cd web && npm run build` |
+| `EADDRINUSE :::3001` | 이전 dev 서버 프로세스 잔존 | `ps aux \| grep 'next dev'` 로 PID 확인 후 `kill <PID>` |
+| TypeScript 오류 · `next-env.d.ts` 없음 | 빌드 전 타입 파일 미생성 | `cd web && npm run build` 실행 후 재기동 |
+| HMR 후 화면 깨짐 | webpack 캐시 꼬임 | `.next` 삭제 후 `npm run dev` 재기동 |
+| `devIndicators` 관련 경고 | Next.js 15 에서도 `buildActivity` 옵션 유효 — 무시 가능 | — |
+
 ## TODO (Sprint 2+)
 
 - [ ] Supabase Auth 연동 (사용자 인증)
