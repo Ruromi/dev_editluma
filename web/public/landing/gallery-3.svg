@@ -1,109 +1,129 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0a0a0a"/>
-      <stop offset="50%" style="stop-color:#0f0a20"/>
-      <stop offset="100%" style="stop-color:#1a0a30"/>
+      <stop offset="0%" style="stop-color:#0a0a10"/>
+      <stop offset="50%" style="stop-color:#0f0820"/>
+      <stop offset="100%" style="stop-color:#1a0a2e"/>
     </linearGradient>
-    <linearGradient id="portalGrad" cx="50%" cy="50%" r="50%" gradientUnits="objectBoundingBox" id="radialPortal">
-      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:0.8"/>
-      <stop offset="40%" style="stop-color:#4f46e5;stop-opacity:0.5"/>
-      <stop offset="100%" style="stop-color:#1a0533;stop-opacity:0"/>
+    <linearGradient id="studioGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a0533"/>
+      <stop offset="100%" style="stop-color:#2d0a5c"/>
     </linearGradient>
-    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" style="stop-color:#e879f9;stop-opacity:0.9"/>
-      <stop offset="30%" style="stop-color:#a855f7;stop-opacity:0.7"/>
-      <stop offset="70%" style="stop-color:#4f46e5;stop-opacity:0.3"/>
-      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:0"/>
+    <radialGradient id="spotlight" cx="65%" cy="30%" r="50%">
+      <stop offset="0%" style="stop-color:#a855f7;stop-opacity:0.30"/>
+      <stop offset="100%" style="stop-color:#a855f7;stop-opacity:0"/>
     </radialGradient>
-    <radialGradient id="ringGlow" cx="50%" cy="50%" r="50%">
-      <stop offset="70%" style="stop-color:#7c3aed;stop-opacity:0"/>
-      <stop offset="85%" style="stop-color:#a855f7;stop-opacity:0.8"/>
-      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:0"/>
+    <radialGradient id="skinCreator3" cx="42%" cy="30%" r="65%">
+      <stop offset="0%" style="stop-color:#f8d8b0"/>
+      <stop offset="55%" style="stop-color:#e8b888"/>
+      <stop offset="100%" style="stop-color:#d09060"/>
     </radialGradient>
     <filter id="glow">
       <feGaussianBlur stdDeviation="4" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
-    <filter id="softGlow">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
-      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
   </defs>
 
-  <!-- Deep space background -->
+  <!-- Background (studio/dark) -->
   <rect width="400" height="300" fill="url(#bg)"/>
 
-  <!-- Distant stars (small) -->
-  <g fill="white">
-    <circle cx="15" cy="20" r="0.8" opacity="0.7"/>
-    <circle cx="45" cy="10" r="0.6" opacity="0.6"/>
-    <circle cx="80" cy="35" r="0.8" opacity="0.8"/>
-    <circle cx="130" cy="15" r="0.6" opacity="0.5"/>
-    <circle cx="170" cy="8" r="0.8" opacity="0.7"/>
-    <circle cx="220" cy="28" r="0.6" opacity="0.6"/>
-    <circle cx="270" cy="12" r="0.8" opacity="0.7"/>
-    <circle cx="320" cy="32" r="0.6" opacity="0.5"/>
-    <circle cx="360" cy="18" r="0.8" opacity="0.8"/>
-    <circle cx="390" cy="45" r="0.6" opacity="0.6"/>
-    <circle cx="25" cy="60" r="0.6" opacity="0.5"/>
-    <circle cx="55" cy="80" r="0.8" opacity="0.7"/>
-    <circle cx="95" cy="55" r="0.6" opacity="0.6"/>
-    <circle cx="340" cy="65" r="0.8" opacity="0.7"/>
-    <circle cx="375" cy="80" r="0.6" opacity="0.5"/>
-    <circle cx="10" cy="200" r="0.8" opacity="0.6"/>
-    <circle cx="380" cy="220" r="0.6" opacity="0.7"/>
-    <circle cx="20" cy="270" r="0.8" opacity="0.5"/>
-    <circle cx="370" cy="260" r="0.6" opacity="0.6"/>
-  </g>
+  <!-- Studio background panel -->
+  <rect x="0" y="0" width="400" height="300" fill="url(#studioGrad)" opacity="0.5"/>
+  <rect x="0" y="0" width="400" height="300" fill="url(#spotlight)"/>
 
-  <!-- Nebula cloud background -->
-  <ellipse cx="200" cy="150" rx="180" ry="130" fill="#1a0533" opacity="0.6"/>
-  <ellipse cx="160" cy="140" rx="120" ry="90" fill="#0d0030" opacity="0.4"/>
-  <ellipse cx="250" cy="160" rx="100" ry="80" fill="#1a0a40" opacity="0.4"/>
+  <!-- Studio desk/counter at bottom -->
+  <rect x="0" y="230" width="400" height="70" fill="#0a0818"/>
+  <rect x="0" y="228" width="400" height="6" rx="2" fill="#1e0a40"/>
 
-  <!-- Outer portal rings -->
-  <circle cx="200" cy="150" r="120" fill="none" stroke="#4f46e5" stroke-width="1" opacity="0.3"/>
-  <circle cx="200" cy="150" r="100" fill="none" stroke="#6d28d9" stroke-width="0.8" opacity="0.4"/>
-  <circle cx="200" cy="150" r="80" fill="none" stroke="#7c3aed" stroke-width="1" opacity="0.5"/>
+  <!-- Laptop / camera setup on desk -->
+  <!-- Laptop -->
+  <rect x="20" y="190" width="120" height="80" rx="4" fill="#1a1a2e" stroke="#4f46e5" stroke-width="1"/>
+  <rect x="24" y="194" width="112" height="62" rx="3" fill="#0a0820"/>
+  <!-- Laptop screen content (video editing UI) -->
+  <rect x="28" y="198" width="104" height="44" rx="2" fill="#050515"/>
+  <rect x="30" y="200" width="50" height="30" rx="1" fill="#1a0a30"/>
+  <!-- Tiny portrait on screen -->
+  <ellipse cx="55" cy="215" rx="12" ry="14" fill="#1a0f08" opacity="0.8"/>
+  <ellipse cx="55" cy="216" rx="9" ry="11" fill="#c88858" opacity="0.6"/>
+  <!-- Timeline bars on screen -->
+  <rect x="84" y="202" width="44" height="4" rx="1" fill="#4f46e5" opacity="0.7"/>
+  <rect x="84" y="210" width="35" height="3" rx="1" fill="#7c3aed" opacity="0.5"/>
+  <rect x="84" y="217" width="40" height="3" rx="1" fill="#a855f7" opacity="0.4"/>
+  <rect x="84" y="224" width="28" height="3" rx="1" fill="#4f46e5" opacity="0.3"/>
+  <!-- Laptop base -->
+  <rect x="14" y="268" width="132" height="6" rx="3" fill="#0d0d20"/>
 
-  <!-- Portal glow rings -->
-  <circle cx="200" cy="150" r="65" fill="url(#ringGlow)"/>
-  <circle cx="200" cy="150" r="65" fill="none" stroke="#a855f7" stroke-width="2" opacity="0.8" filter="url(#glow)"/>
+  <!-- Camera (on right side of desk) -->
+  <rect x="310" y="210" width="70" height="48" rx="6" fill="#111120" stroke="#374151" stroke-width="1"/>
+  <circle cx="338" cy="234" r="16" fill="#050510" stroke="#4f46e5" stroke-width="1.5"/>
+  <circle cx="338" cy="234" r="10" fill="#0a0a18"/>
+  <circle cx="338" cy="234" r="5" fill="#1a1a30"/>
+  <circle cx="342" cy="230" r="2" fill="white" opacity="0.4"/>
+  <rect x="372" y="220" width="10" height="16" rx="2" fill="#1e1e30"/>
+  <!-- Camera red record light -->
+  <circle cx="368" cy="214" r="3" fill="#ef4444" filter="url(#glow)" opacity="0.9"/>
 
-  <!-- Inner portal fill -->
-  <circle cx="200" cy="150" r="55" fill="url(#coreGlow)"/>
+  <!-- === CREATOR PORTRAIT (right-center, thumbnail style) === -->
+  <!-- Body/hoodie -->
+  <path d="M195,300 C228,255 250,240 295,240 C340,240 362,255 380,300 Z" fill="#4f46e5"/>
+  <path d="M260,240 L295,262 L330,240 C322,224 312,218 295,215 C278,218 268,224 260,240 Z" fill="#6d28d9" opacity="0.55"/>
 
-  <!-- Core bright center -->
-  <circle cx="200" cy="150" r="20" fill="#e879f9" opacity="0.9" filter="url(#softGlow)"/>
-  <circle cx="200" cy="150" r="8" fill="white" opacity="0.95" filter="url(#glow)"/>
+  <!-- Neck -->
+  <rect x="283" y="228" width="24" height="24" rx="6" fill="#e8b888"/>
 
-  <!-- Light rays from center -->
-  <g opacity="0.25" filter="url(#glow)">
-    <line x1="200" y1="150" x2="200" y2="30" stroke="#e879f9" stroke-width="2"/>
-    <line x1="200" y1="150" x2="200" y2="270" stroke="#e879f9" stroke-width="2"/>
-    <line x1="200" y1="150" x2="80" y2="150" stroke="#a855f7" stroke-width="2"/>
-    <line x1="200" y1="150" x2="320" y2="150" stroke="#a855f7" stroke-width="2"/>
-    <line x1="200" y1="150" x2="115" y2="65" stroke="#c084fc" stroke-width="1.5"/>
-    <line x1="200" y1="150" x2="285" y2="65" stroke="#c084fc" stroke-width="1.5"/>
-    <line x1="200" y1="150" x2="115" y2="235" stroke="#c084fc" stroke-width="1.5"/>
-    <line x1="200" y1="150" x2="285" y2="235" stroke="#c084fc" stroke-width="1.5"/>
-  </g>
+  <!-- Hair -->
+  <ellipse cx="295" cy="158" rx="72" ry="88" fill="#180d05"/>
+  <ellipse cx="226" cy="178" rx="24" ry="74" fill="#140c04"/>
+  <ellipse cx="364" cy="178" rx="24" ry="74" fill="#140c04"/>
 
-  <!-- Sparkle dots around portal -->
-  <g filter="url(#glow)">
-    <circle cx="200" cy="82" r="2.5" fill="#f0abfc" opacity="0.9"/>
-    <circle cx="253" cy="100" r="2" fill="#c084fc" opacity="0.8"/>
-    <circle cx="268" cy="150" r="2.5" fill="#a78bfa" opacity="0.9"/>
-    <circle cx="253" cy="200" r="2" fill="#c084fc" opacity="0.8"/>
-    <circle cx="200" cy="218" r="2.5" fill="#f0abfc" opacity="0.9"/>
-    <circle cx="147" cy="200" r="2" fill="#c084fc" opacity="0.8"/>
-    <circle cx="132" cy="150" r="2.5" fill="#a78bfa" opacity="0.9"/>
-    <circle cx="147" cy="100" r="2" fill="#c084fc" opacity="0.8"/>
-  </g>
+  <!-- Face -->
+  <ellipse cx="295" cy="165" rx="58" ry="70" fill="url(#skinCreator3)"/>
+
+  <!-- Cheeks -->
+  <ellipse cx="250" cy="178" rx="15" ry="9" fill="#e87060" opacity="0.10"/>
+  <ellipse cx="340" cy="178" rx="15" ry="9" fill="#e87060" opacity="0.10"/>
+
+  <!-- Eyebrows -->
+  <path d="M258,148 Q268,143 278,147" fill="none" stroke="#2a1808" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M312,147 Q322,143 332,148" fill="none" stroke="#2a1808" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Left eye -->
+  <ellipse cx="268" cy="160" rx="14" ry="10" fill="white"/>
+  <circle cx="268" cy="160" r="8" fill="#4a2c14"/>
+  <circle cx="268" cy="160" r="4.5" fill="#0e0805"/>
+  <circle cx="271" cy="158" r="2.2" fill="white" opacity="0.9"/>
+
+  <!-- Right eye -->
+  <ellipse cx="322" cy="160" rx="14" ry="10" fill="white"/>
+  <circle cx="322" cy="160" r="8" fill="#4a2c14"/>
+  <circle cx="322" cy="160" r="4.5" fill="#0e0805"/>
+  <circle cx="325" cy="158" r="2.2" fill="white" opacity="0.9"/>
+
+  <!-- Nose -->
+  <path d="M287,174 L285,188 Q295,194 305,188 L303,174" fill="none" stroke="#c8906a" stroke-width="1.3" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Smile (wide, content creator enthusiasm) -->
+  <path d="M275,205 Q295,218 315,205 Q295,228 275,205 Z" fill="#c86050"/>
+  <path d="M277,205 Q295,198 313,205" fill="none" stroke="#e87868" stroke-width="1.2" opacity="0.55"/>
+
+  <!-- TEXT side (left — YouTube thumbnail style) -->
+  <text x="14" y="70" font-family="system-ui,sans-serif" font-size="24" font-weight="bold" fill="white" opacity="0.95">크리에이터</text>
+  <text x="14" y="100" font-family="system-ui,sans-serif" font-size="20" font-weight="bold" fill="#a855f7" opacity="0.9">썸네일</text>
+  <!-- Accent line -->
+  <rect x="14" y="110" width="130" height="3" rx="1.5" fill="#7c3aed" opacity="0.7"/>
+  <!-- Sub text -->
+  <text x="14" y="136" font-family="system-ui,sans-serif" font-size="11" fill="#9ca3af">AI 생성 인물</text>
+  <text x="14" y="152" font-family="system-ui,sans-serif" font-size="11" fill="#9ca3af">완성 샘플</text>
+
+  <!-- Subscribe button style badge -->
+  <rect x="14" y="165" width="80" height="26" rx="13" fill="#ef4444"/>
+  <text x="54" y="182" font-family="system-ui,sans-serif" font-size="10" font-weight="bold" fill="white" text-anchor="middle">SUBSCRIBE</text>
+
+  <!-- Views counter -->
+  <text x="14" y="210" font-family="system-ui,sans-serif" font-size="10" fill="#6b7280">👁 1.2M views</text>
 
   <!-- AI Generated badge -->
-  <rect x="10" y="272" width="100" height="20" rx="4" fill="#1a0533" opacity="0.9"/>
-  <rect x="10" y="272" width="100" height="20" rx="4" stroke="#a855f7" stroke-width="0.5"/>
-  <text x="60" y="285" font-family="system-ui,sans-serif" font-size="9" fill="#c084fc" text-anchor="middle">✦ AI Generated</text>
+  <rect x="10" y="272" width="110" height="20" rx="4" fill="#1a0533" opacity="0.92"/>
+  <rect x="10" y="272" width="110" height="20" rx="4" stroke="#a855f7" stroke-width="0.5"/>
+  <text x="65" y="285" font-family="system-ui,sans-serif" font-size="9" fill="#c084fc" text-anchor="middle">✦ AI Generated</text>
 </svg>

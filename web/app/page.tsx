@@ -2,29 +2,29 @@ import Link from "next/link";
 
 const features = [
   {
-    title: "화질 보정 · Upscale",
-    desc: "Real-ESRGAN 기반 최대 4K AI 업스케일링. 흐릿한 이미지를 선명하게.",
+    title: "인물 화질 보정 · Upscale",
+    desc: "셀피·인물사진의 피부 선명도·색감을 AI가 복원. 최대 4K 업스케일링.",
     img: "/landing/feature-enhance.svg",
-    alt: "화질 보정 기능 예시 — before/after 이미지",
+    alt: "인물 화질 보정 예시 — 피부·선명도 before/after 비교",
   },
   {
-    title: "AI 이미지 생성",
-    desc: "텍스트 프롬프트 한 줄로 새 이미지를 즉시 생성.",
+    title: "AI 인물 이미지 생성",
+    desc: "\"20대 여성, 카페\" 한 줄 프롬프트로 원하는 인물 사진을 즉시 생성.",
     img: "/landing/feature-generate.svg",
-    alt: "AI 이미지 생성 기능 예시 — 신경망 시각화",
+    alt: "AI 인물 생성 예시 — 텍스트 프롬프트로 인물 사진 생성",
   },
   {
-    title: "BGM 자동 삽입",
-    desc: "영상 분위기를 분석해 어울리는 BGM을 자동으로 매칭·삽입.",
+    title: "쇼츠 BGM 자동 삽입",
+    desc: "인물 영상의 분위기를 분석해 어울리는 BGM을 자동으로 매칭·삽입.",
     img: "/landing/feature-music.svg",
-    alt: "BGM 자동 삽입 기능 예시 — 오디오 웨이브폼",
+    alt: "BGM 자동 삽입 예시 — 크리에이터 쇼츠 영상에 BGM 웨이브폼",
   },
 ];
 
 const gallery = [
-  { src: "/landing/gallery-1.svg", alt: "AI 보정 샘플 — 오로라 산악 풍경" },
-  { src: "/landing/gallery-2.svg", alt: "AI 보정 샘플 — 야경 도심 실루엣" },
-  { src: "/landing/gallery-3.svg", alt: "AI 생성 샘플 — 우주 포털 추상화" },
+  { src: "/landing/gallery-1.svg", alt: "AI 보정 샘플 — 셀피 인물 사진 보정" },
+  { src: "/landing/gallery-2.svg", alt: "AI 보정 샘플 — 스트릿 포트레이트 보정" },
+  { src: "/landing/gallery-3.svg", alt: "AI 생성 샘플 — 크리에이터 썸네일 인물" },
 ];
 
 export default function Home() {
@@ -35,20 +35,20 @@ export default function Home() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/landing/hero-main.svg"
-          alt="EditLuma — AI 이미지·영상 보정 before/after 비교 화면"
+          alt="EditLuma — AI 인물 보정 before/after 비교 — 피부·선명도·색감 업스케일"
           className="w-full object-cover"
           style={{ maxHeight: 520, display: "block" }}
         />
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black/40 px-6 text-center">
           <h1 className="text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl">
-            AI 이미지·영상 보정
+            AI 인물 사진·영상 보정
             <br />
             <span className="text-indigo-300">+ BGM 자동 삽입</span>
           </h1>
           <p className="max-w-xl text-base text-gray-200 drop-shadow sm:text-lg">
-            파일을 업로드하면 AI가 화질을 보정하고
+            셀피·인물사진을 업로드하면 AI가 피부·색감을 보정하고
             <br className="hidden sm:block" />
-            분위기에 맞는 BGM을 자동으로 붙여드립니다.
+            쇼츠 영상에 어울리는 BGM을 자동으로 붙여드립니다.
           </p>
           <div className="flex gap-4">
             <Link
@@ -96,7 +96,7 @@ export default function Home() {
       <section className="flex flex-col gap-6">
         <h2 className="text-center text-2xl font-bold text-white">샘플 갤러리</h2>
         <p className="text-center text-sm text-gray-500">
-          EditLuma AI로 보정·생성된 이미지 예시 (SVG placeholder)
+          셀피·스트릿 포트레이트·크리에이터 썸네일 — AI 보정·생성 예시
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
           {gallery.map((g) => (

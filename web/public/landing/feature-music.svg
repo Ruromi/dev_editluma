@@ -1,8 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 280" width="400" height="280">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#0c1a0f;stop-opacity:1"/>
-      <stop offset="100%" style="stop-color:#0a1a2e;stop-opacity:1"/>
+      <stop offset="0%" style="stop-color:#0c1a0f"/>
+      <stop offset="100%" style="stop-color:#0a1a2e"/>
+    </linearGradient>
+    <linearGradient id="thumbBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a0a40"/>
+      <stop offset="100%" style="stop-color:#2d0a50"/>
     </linearGradient>
     <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
       <stop offset="0%" style="stop-color:#059669;stop-opacity:0.4"/>
@@ -18,6 +22,11 @@
       <stop offset="0%" style="stop-color:#0891b2"/>
       <stop offset="100%" style="stop-color:#67e8f9"/>
     </linearGradient>
+    <radialGradient id="skinCreator" cx="42%" cy="32%" r="62%">
+      <stop offset="0%" style="stop-color:#f5d0a8"/>
+      <stop offset="60%" style="stop-color:#e0a878"/>
+      <stop offset="100%" style="stop-color:#c88858"/>
+    </radialGradient>
     <filter id="glow">
       <feGaussianBlur stdDeviation="2" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -26,72 +35,112 @@
 
   <rect width="400" height="280" rx="16" fill="url(#bg)"/>
 
-  <!-- Waveform background track (video/image) -->
-  <rect x="30" y="50" width="340" height="60" rx="8" fill="#0a1a20" stroke="#1e3a2a" stroke-width="1" opacity="0.8"/>
-  <text x="45" y="73" font-family="system-ui,sans-serif" font-size="10" fill="#6b7280">VIDEO TRACK</text>
-  <!-- Video wave shape (subtle) -->
-  <polyline points="40,90 60,75 75,88 90,72 110,85 130,70 150,83 170,75 190,88 210,73 230,86 250,70 270,83 290,75 310,88 330,72 350,85 365,78 370,90" fill="none" stroke="#374151" stroke-width="1.5"/>
+  <!-- ===== VIDEO THUMBNAIL (creator shorts) ===== -->
+  <rect x="20" y="14" width="360" height="115" rx="10" fill="url(#thumbBg)" stroke="#4c1d95" stroke-width="1"/>
 
-  <!-- BGM waveform track (main) -->
-  <rect x="30" y="125" width="340" height="80" rx="8" fill="#051a10" stroke="#064e3b" stroke-width="1"/>
-  <text x="45" y="145" font-family="system-ui,sans-serif" font-size="10" fill="#10b981">BGM TRACK · Auto-Matched</text>
+  <!-- Background blur/gradient in video -->
+  <ellipse cx="200" cy="66" rx="180" ry="60" fill="#3730a3" opacity="0.18"/>
 
-  <!-- Waveform bars (equalizer style) -->
+  <!-- Creator portrait in video -->
+  <!-- Shoulders -->
+  <path d="M100,129 C128,100 154,94 200,94 C246,94 272,100 300,129 Z" fill="#3730a3"/>
+  <!-- Neck -->
+  <rect x="192" y="85" width="16" height="18" rx="4" fill="#e0a878"/>
+  <!-- Hair -->
+  <ellipse cx="200" cy="62" rx="36" ry="44" fill="#180d05"/>
+  <ellipse cx="166" cy="70" rx="12" ry="34" fill="#140c04"/>
+  <ellipse cx="234" cy="70" rx="12" ry="34" fill="#140c04"/>
+  <!-- Face -->
+  <ellipse cx="200" cy="66" rx="28" ry="34" fill="url(#skinCreator)"/>
+  <!-- Cheeks -->
+  <ellipse cx="180" cy="72" rx="7" ry="4" fill="#e87060" opacity="0.10"/>
+  <ellipse cx="220" cy="72" rx="7" ry="4" fill="#e87060" opacity="0.10"/>
+  <!-- Eyebrows -->
+  <path d="M184,56 Q190,53 196,55" fill="none" stroke="#2a1808" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M204,55 Q210,53 216,56" fill="none" stroke="#2a1808" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Left eye -->
+  <ellipse cx="188" cy="62" rx="6" ry="4.5" fill="white"/>
+  <circle cx="188" cy="62" r="3.5" fill="#4a2c14"/>
+  <circle cx="188" cy="62" r="2" fill="#0e0805"/>
+  <circle cx="190" cy="61" r="1" fill="white" opacity="0.9"/>
+  <!-- Right eye -->
+  <ellipse cx="212" cy="62" rx="6" ry="4.5" fill="white"/>
+  <circle cx="212" cy="62" r="3.5" fill="#4a2c14"/>
+  <circle cx="212" cy="62" r="2" fill="#0e0805"/>
+  <circle cx="214" cy="61" r="1" fill="white" opacity="0.9"/>
+  <!-- Smile -->
+  <path d="M191,78 Q200,85 209,78" fill="none" stroke="#c86050" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Play button overlay -->
+  <circle cx="200" cy="66" r="18" fill="#000" opacity="0.25"/>
+  <polygon points="194,58 214,66 194,74" fill="white" opacity="0.85"/>
+
+  <!-- Vertical video indicator -->
+  <rect x="22" y="16" width="14" height="22" rx="2" fill="#7c3aed" opacity="0.7"/>
+  <text x="29" y="31" font-family="system-ui,sans-serif" font-size="7" fill="white" text-anchor="middle" font-weight="bold">9:16</text>
+
+  <!-- Shorts label -->
+  <rect x="310" y="16" width="66" height="16" rx="4" fill="#ef4444" opacity="0.9"/>
+  <text x="343" y="27" font-family="system-ui,sans-serif" font-size="9" fill="white" text-anchor="middle" font-weight="bold">▶ Shorts</text>
+
+  <!-- ===== BGM WAVEFORM TRACK ===== -->
+  <rect x="20" y="138" width="360" height="80" rx="8" fill="#051a10" stroke="#064e3b" stroke-width="1"/>
+  <text x="38" y="154" font-family="system-ui,sans-serif" font-size="10" fill="#10b981">BGM TRACK · Auto-Matched</text>
+
+  <!-- Equalizer bars -->
   <g filter="url(#glow)">
-    <!-- Bar heights vary to simulate audio waveform -->
-    <rect x="42" y="177" width="6" height="20" rx="2" fill="url(#barGrad1)"/>
-    <rect x="52" y="170" width="6" height="27" rx="2" fill="url(#barGrad1)"/>
-    <rect x="62" y="162" width="6" height="35" rx="2" fill="url(#barGrad1)"/>
-    <rect x="72" y="172" width="6" height="25" rx="2" fill="url(#barGrad1)"/>
-    <rect x="82" y="158" width="6" height="39" rx="2" fill="url(#barGrad2)"/>
-    <rect x="92" y="163" width="6" height="34" rx="2" fill="url(#barGrad2)"/>
-    <rect x="102" y="155" width="6" height="42" rx="2" fill="url(#barGrad2)"/>
-    <rect x="112" y="168" width="6" height="29" rx="2" fill="url(#barGrad1)"/>
-    <rect x="122" y="160" width="6" height="37" rx="2" fill="url(#barGrad1)"/>
-    <rect x="132" y="153" width="6" height="44" rx="2" fill="url(#barGrad2)"/>
-    <rect x="142" y="148" width="6" height="49" rx="2" fill="url(#barGrad2)"/>
-    <rect x="152" y="156" width="6" height="41" rx="2" fill="url(#barGrad2)"/>
-    <rect x="162" y="150" width="6" height="47" rx="2" fill="url(#barGrad1)"/>
-    <rect x="172" y="145" width="6" height="52" rx="2" fill="url(#barGrad1)"/>
-    <rect x="182" y="152" width="6" height="45" rx="2" fill="url(#barGrad2)"/>
-    <rect x="192" y="148" width="6" height="49" rx="2" fill="url(#barGrad2)"/>
-    <rect x="202" y="155" width="6" height="42" rx="2" fill="url(#barGrad1)"/>
-    <rect x="212" y="160" width="6" height="37" rx="2" fill="url(#barGrad1)"/>
-    <rect x="222" y="153" width="6" height="44" rx="2" fill="url(#barGrad2)"/>
-    <rect x="232" y="158" width="6" height="39" rx="2" fill="url(#barGrad1)"/>
-    <rect x="242" y="164" width="6" height="33" rx="2" fill="url(#barGrad1)"/>
-    <rect x="252" y="168" width="6" height="29" rx="2" fill="url(#barGrad2)"/>
-    <rect x="262" y="160" width="6" height="37" rx="2" fill="url(#barGrad2)"/>
-    <rect x="272" y="155" width="6" height="42" rx="2" fill="url(#barGrad1)"/>
-    <rect x="282" y="163" width="6" height="34" rx="2" fill="url(#barGrad1)"/>
-    <rect x="292" y="170" width="6" height="27" rx="2" fill="url(#barGrad2)"/>
-    <rect x="302" y="172" width="6" height="25" rx="2" fill="url(#barGrad1)"/>
-    <rect x="312" y="167" width="6" height="30" rx="2" fill="url(#barGrad1)"/>
-    <rect x="322" y="174" width="6" height="23" rx="2" fill="url(#barGrad2)"/>
-    <rect x="332" y="178" width="6" height="19" rx="2" fill="url(#barGrad1)"/>
-    <rect x="342" y="176" width="6" height="21" rx="2" fill="url(#barGrad2)"/>
-    <rect x="352" y="180" width="6" height="17" rx="2" fill="url(#barGrad1)"/>
+    <rect x="36" y="194" width="6" height="20" rx="2" fill="url(#barGrad1)"/>
+    <rect x="46" y="187" width="6" height="27" rx="2" fill="url(#barGrad1)"/>
+    <rect x="56" y="179" width="6" height="35" rx="2" fill="url(#barGrad1)"/>
+    <rect x="66" y="189" width="6" height="25" rx="2" fill="url(#barGrad1)"/>
+    <rect x="76" y="175" width="6" height="39" rx="2" fill="url(#barGrad2)"/>
+    <rect x="86" y="180" width="6" height="34" rx="2" fill="url(#barGrad2)"/>
+    <rect x="96" y="172" width="6" height="42" rx="2" fill="url(#barGrad2)"/>
+    <rect x="106" y="185" width="6" height="29" rx="2" fill="url(#barGrad1)"/>
+    <rect x="116" y="177" width="6" height="37" rx="2" fill="url(#barGrad1)"/>
+    <rect x="126" y="170" width="6" height="44" rx="2" fill="url(#barGrad2)"/>
+    <rect x="136" y="165" width="6" height="49" rx="2" fill="url(#barGrad2)"/>
+    <rect x="146" y="173" width="6" height="41" rx="2" fill="url(#barGrad2)"/>
+    <rect x="156" y="167" width="6" height="47" rx="2" fill="url(#barGrad1)"/>
+    <rect x="166" y="162" width="6" height="52" rx="2" fill="url(#barGrad1)"/>
+    <rect x="176" y="169" width="6" height="45" rx="2" fill="url(#barGrad2)"/>
+    <rect x="186" y="165" width="6" height="49" rx="2" fill="url(#barGrad2)"/>
+    <rect x="196" y="172" width="6" height="42" rx="2" fill="url(#barGrad1)"/>
+    <rect x="206" y="177" width="6" height="37" rx="2" fill="url(#barGrad1)"/>
+    <rect x="216" y="170" width="6" height="44" rx="2" fill="url(#barGrad2)"/>
+    <rect x="226" y="175" width="6" height="39" rx="2" fill="url(#barGrad1)"/>
+    <rect x="236" y="181" width="6" height="33" rx="2" fill="url(#barGrad1)"/>
+    <rect x="246" y="185" width="6" height="29" rx="2" fill="url(#barGrad2)"/>
+    <rect x="256" y="177" width="6" height="37" rx="2" fill="url(#barGrad2)"/>
+    <rect x="266" y="172" width="6" height="42" rx="2" fill="url(#barGrad1)"/>
+    <rect x="276" y="180" width="6" height="34" rx="2" fill="url(#barGrad1)"/>
+    <rect x="286" y="187" width="6" height="27" rx="2" fill="url(#barGrad2)"/>
+    <rect x="296" y="189" width="6" height="25" rx="2" fill="url(#barGrad1)"/>
+    <rect x="306" y="184" width="6" height="30" rx="2" fill="url(#barGrad1)"/>
+    <rect x="316" y="191" width="6" height="23" rx="2" fill="url(#barGrad2)"/>
+    <rect x="326" y="195" width="6" height="19" rx="2" fill="url(#barGrad1)"/>
+    <rect x="336" y="193" width="6" height="21" rx="2" fill="url(#barGrad2)"/>
+    <rect x="346" y="197" width="6" height="17" rx="2" fill="url(#barGrad1)"/>
+    <rect x="356" y="194" width="6" height="20" rx="2" fill="url(#barGrad2)"/>
   </g>
 
-  <!-- Playhead indicator -->
-  <line x1="175" y1="125" x2="175" y2="205" stroke="#fbbf24" stroke-width="1.5" opacity="0.8"/>
-  <polygon points="171,125 179,125 175,131" fill="#fbbf24" opacity="0.8"/>
-
-  <!-- Musical notes floating -->
-  <g filter="url(#glow)" font-family="serif" fill="#10b981">
-    <text x="50" y="38" font-size="20" opacity="0.7">♪</text>
-    <text x="160" y="35" font-size="16" opacity="0.6">♫</text>
-    <text x="290" y="40" font-size="18" opacity="0.7">♩</text>
-    <text x="340" y="33" font-size="14" opacity="0.5">♬</text>
-    <text x="110" y="36" font-size="12" fill="#34d399" opacity="0.5">♪</text>
-    <text x="230" y="37" font-size="14" fill="#67e8f9" opacity="0.6">♫</text>
-  </g>
+  <!-- Playhead -->
+  <line x1="170" y1="138" x2="170" y2="218" stroke="#fbbf24" stroke-width="1.5" opacity="0.8"/>
+  <polygon points="166,138 174,138 170,144" fill="#fbbf24" opacity="0.8"/>
 
   <!-- AI match badge -->
-  <rect x="260" y="130" width="100" height="18" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="0.5"/>
-  <text x="310" y="142" font-family="system-ui,sans-serif" font-size="9" fill="#34d399" text-anchor="middle">● AI 무드 매칭 완료</text>
+  <rect x="258" y="143" width="108" height="18" rx="4" fill="#064e3b" stroke="#10b981" stroke-width="0.5"/>
+  <text x="312" y="155" font-family="system-ui,sans-serif" font-size="9" fill="#34d399" text-anchor="middle">● AI 무드 매칭 완료</text>
+
+  <!-- Floating music notes -->
+  <g filter="url(#glow)" font-family="serif" fill="#10b981">
+    <text x="34" y="130" font-size="16" opacity="0.75">♪</text>
+    <text x="142" y="128" font-size="14" opacity="0.65">♫</text>
+    <text x="284" y="132" font-size="16" opacity="0.7">♩</text>
+    <text x="356" y="126" font-size="13" opacity="0.6" fill="#67e8f9">♬</text>
+  </g>
 
   <!-- Bottom title -->
-  <text x="200" y="235" font-family="system-ui,sans-serif" font-size="15" font-weight="bold" fill="white" text-anchor="middle">BGM 자동 삽입</text>
-  <text x="200" y="255" font-family="system-ui,sans-serif" font-size="11" fill="#9ca3af" text-anchor="middle">영상 분위기 분석 → BGM 자동 매칭 · 삽입</text>
+  <text x="200" y="242" font-family="system-ui,sans-serif" font-size="15" font-weight="bold" fill="white" text-anchor="middle">쇼츠 영상 BGM 자동 삽입</text>
+  <text x="200" y="262" font-family="system-ui,sans-serif" font-size="11" fill="#9ca3af" text-anchor="middle">인물 영상 분위기 분석 → BGM 자동 매칭·삽입</text>
 </svg>
