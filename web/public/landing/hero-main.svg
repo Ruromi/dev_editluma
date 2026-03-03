@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0a1e;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#1a0a3e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0a0a2e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="leftPanel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="rightPanel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a0533;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3d0b6b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="dividerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed;stop-opacity:0" />
+      <stop offset="30%" style="stop-color:#a855f7;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#7c3aed;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:0" />
+    </linearGradient>
+    <filter id="blur2">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="noisePat" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="4" fill="none"/>
+      <circle cx="1" cy="1" r="0.5" fill="#ffffff" opacity="0.03"/>
+      <circle cx="3" cy="3" r="0.5" fill="#ffffff" opacity="0.03"/>
+    </pattern>
+    <!-- Pixelated grid for "before" side -->
+    <pattern id="pixelPat" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+      <rect width="15" height="15" fill="#1e1e3a" rx="1"/>
+      <rect x="8" y="0" width="7" height="7" fill="#252550" rx="1"/>
+      <rect x="0" y="8" width="7" height="7" fill="#2a2060" rx="1"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="600" fill="url(#bgGrad)"/>
+  <rect width="1200" height="600" fill="url(#noisePat)"/>
+
+  <!-- Left panel: "Before" — blurry/low-quality -->
+  <rect x="100" y="80" width="440" height="440" rx="12" fill="url(#leftPanel)" stroke="#2a2a4a" stroke-width="1"/>
+  <!-- Pixelated image simulation -->
+  <rect x="116" y="96" width="408" height="408" rx="8" fill="url(#pixelPat)" opacity="0.9"/>
+  <!-- Blur overlay -->
+  <rect x="116" y="96" width="408" height="408" rx="8" fill="#0a0a20" opacity="0.4" filter="url(#blur2)"/>
+  <!-- Abstract blurry shapes -->
+  <ellipse cx="260" cy="260" rx="100" ry="80" fill="#3730a3" opacity="0.3" filter="url(#blur2)"/>
+  <ellipse cx="360" cy="320" rx="80" ry="60" fill="#1d4ed8" opacity="0.2" filter="url(#blur2)"/>
+  <ellipse cx="200" cy="350" rx="70" ry="50" fill="#7c3aed" opacity="0.15" filter="url(#blur2)"/>
+  <!-- Before label -->
+  <rect x="130" y="460" width="80" height="24" rx="4" fill="#1a1a3e" stroke="#3a3a6a" stroke-width="1"/>
+  <text x="170" y="476" font-family="system-ui,sans-serif" font-size="12" fill="#6b7280" text-anchor="middle">BEFORE</text>
+
+  <!-- Center divider with AI glow -->
+  <rect x="578" y="80" width="44" height="440" rx="22" fill="url(#dividerGrad)" opacity="0.15"/>
+  <line x1="600" y1="80" x2="600" y2="520" stroke="url(#dividerGrad)" stroke-width="2"/>
+
+  <!-- AI sparkles in center -->
+  <g filter="url(#glow)">
+    <circle cx="600" cy="300" r="22" fill="#7c3aed" opacity="0.9"/>
+    <text x="600" y="306" font-family="system-ui,sans-serif" font-size="14" font-weight="bold" fill="white" text-anchor="middle">AI</text>
+    <!-- Spark rays -->
+    <line x1="600" y1="268" x2="600" y2="258" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="600" y1="332" x2="600" y2="342" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="568" y1="300" x2="558" y2="300" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="632" y1="300" x2="642" y2="300" stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="578" y1="278" x2="571" y2="271" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="622" y1="278" x2="629" y2="271" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="578" y1="322" x2="571" y2="329" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="622" y1="322" x2="629" y2="329" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- Arrow indicators -->
+  <polygon points="544,295 556,300 544,305" fill="#6d28d9" opacity="0.8"/>
+  <polygon points="656,295 644,300 656,305" fill="#6d28d9" opacity="0.8"/>
+
+  <!-- Right panel: "After" — sharp/enhanced -->
+  <rect x="660" y="80" width="440" height="440" rx="12" fill="url(#rightPanel)" stroke="#4c1d95" stroke-width="1"/>
+  <rect x="676" y="96" width="408" height="408" rx="8" fill="#0d0020" opacity="0.6"/>
+  <!-- Enhanced/sharp abstract shapes -->
+  <ellipse cx="840" cy="280" rx="110" ry="90" fill="#4f46e5" opacity="0.35"/>
+  <ellipse cx="920" cy="340" rx="85" ry="65" fill="#7c3aed" opacity="0.4"/>
+  <ellipse cx="780" cy="360" rx="75" ry="55" fill="#6d28d9" opacity="0.3"/>
+  <!-- Sharp light streaks -->
+  <line x1="700" y1="150" x2="820" y2="200" stroke="#a855f7" stroke-width="1" opacity="0.6"/>
+  <line x1="900" y1="130" x2="1040" y2="180" stroke="#818cf8" stroke-width="1" opacity="0.5"/>
+  <line x1="740" y1="400" x2="1040" y2="380" stroke="#c084fc" stroke-width="0.5" opacity="0.4"/>
+  <!-- Bright highlight dots -->
+  <circle cx="810" cy="230" r="3" fill="#e879f9" opacity="0.9"/>
+  <circle cx="900" cy="270" r="2" fill="#a78bfa" opacity="0.9"/>
+  <circle cx="950" cy="320" r="4" fill="#c084fc" opacity="0.7"/>
+  <circle cx="760" cy="340" r="2" fill="#818cf8" opacity="0.8"/>
+  <circle cx="1020" cy="200" r="3" fill="#f0abfc" opacity="0.7"/>
+  <!-- Shimmer/quality indicator grid -->
+  <g opacity="0.12">
+    <line x1="676" y1="200" x2="1084" y2="200" stroke="#a855f7" stroke-width="0.5"/>
+    <line x1="676" y1="300" x2="1084" y2="300" stroke="#a855f7" stroke-width="0.5"/>
+    <line x1="676" y1="400" x2="1084" y2="400" stroke="#a855f7" stroke-width="0.5"/>
+    <line x1="776" y1="96" x2="776" y2="504" stroke="#a855f7" stroke-width="0.5"/>
+    <line x1="876" y1="96" x2="876" y2="504" stroke="#a855f7" stroke-width="0.5"/>
+    <line x1="976" y1="96" x2="976" y2="504" stroke="#a855f7" stroke-width="0.5"/>
+  </g>
+  <!-- After label -->
+  <rect x="692" y="460" width="80" height="24" rx="4" fill="#2d0059" stroke="#7c3aed" stroke-width="1"/>
+  <text x="732" y="476" font-family="system-ui,sans-serif" font-size="12" fill="#a855f7" text-anchor="middle">AFTER</text>
+  <!-- 4K badge -->
+  <rect x="1018" y="108" width="48" height="22" rx="4" fill="#7c3aed" opacity="0.9"/>
+  <text x="1042" y="123" font-family="system-ui,sans-serif" font-size="11" font-weight="bold" fill="white" text-anchor="middle">4K AI</text>
+
+  <!-- Floating sparkle particles -->
+  <g opacity="0.7">
+    <circle cx="150" cy="140" r="2" fill="#818cf8"/>
+    <circle cx="200" cy="80" r="1.5" fill="#a855f7"/>
+    <circle cx="450" cy="90" r="2" fill="#6366f1"/>
+    <circle cx="1050" cy="100" r="1.5" fill="#c084fc"/>
+    <circle cx="1100" cy="480" r="2" fill="#a855f7"/>
+    <circle cx="130" cy="500" r="1.5" fill="#818cf8"/>
+  </g>
+
+  <!-- Bottom overlay text -->
+  <rect x="0" y="530" width="1200" height="70" fill="#0a0a1a" opacity="0.7"/>
+  <text x="600" y="568" font-family="system-ui,sans-serif" font-size="22" font-weight="bold" fill="white" text-anchor="middle" opacity="0.9">EditLuma · AI 이미지·영상 보정 + BGM 자동 삽입</text>
+  <text x="600" y="590" font-family="system-ui,sans-serif" font-size="13" fill="#9ca3af" text-anchor="middle">Upload → Enhance → Add Music → Download</text>
+</svg>

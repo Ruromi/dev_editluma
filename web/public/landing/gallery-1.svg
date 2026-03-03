@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0c1a3a"/>
+      <stop offset="60%" style="stop-color:#1a2a6c"/>
+      <stop offset="100%" style="stop-color:#3a1a6c"/>
+    </linearGradient>
+    <linearGradient id="mountain" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a1040"/>
+      <stop offset="100%" style="stop-color:#0a0820"/>
+    </linearGradient>
+    <linearGradient id="aurora" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669;stop-opacity:0.6"/>
+      <stop offset="50%" style="stop-color:#7c3aed;stop-opacity:0.4"/>
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:0.6"/>
+    </linearGradient>
+    <radialGradient id="moonGlow" cx="70%" cy="20%" r="20%">
+      <stop offset="0%" style="stop-color:#fef3c7;stop-opacity:0.5"/>
+      <stop offset="100%" style="stop-color:#fef3c7;stop-opacity:0"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Sky background -->
+  <rect width="400" height="300" fill="url(#sky)"/>
+  <rect width="400" height="300" fill="url(#moonGlow)"/>
+
+  <!-- Aurora effect -->
+  <ellipse cx="200" cy="80" rx="250" ry="60" fill="url(#aurora)" opacity="0.5"/>
+  <ellipse cx="150" cy="100" rx="200" ry="50" fill="#059669" opacity="0.12"/>
+  <ellipse cx="300" cy="90" rx="180" ry="45" fill="#7c3aed" opacity="0.12"/>
+
+  <!-- Stars -->
+  <g fill="white" opacity="0.8">
+    <circle cx="30" cy="20" r="1"/>
+    <circle cx="80" cy="15" r="1.5"/>
+    <circle cx="120" cy="30" r="1"/>
+    <circle cx="160" cy="10" r="1"/>
+    <circle cx="200" cy="25" r="1.5"/>
+    <circle cx="240" cy="12" r="1"/>
+    <circle cx="310" cy="22" r="1.5"/>
+    <circle cx="350" cy="8" r="1"/>
+    <circle cx="380" cy="30" r="1"/>
+    <circle cx="55" cy="45" r="1"/>
+    <circle cx="140" cy="50" r="1"/>
+    <circle cx="260" cy="40" r="1.5"/>
+    <circle cx="370" cy="55" r="1"/>
+  </g>
+
+  <!-- Moon -->
+  <circle cx="300" cy="55" r="22" fill="#fef9c3" opacity="0.9" filter="url(#glow)"/>
+  <circle cx="308" cy="50" r="18" fill="url(#sky)" opacity="0.7"/>
+
+  <!-- Mountains background (far) -->
+  <polygon points="0,220 60,140 120,170 180,130 240,160 300,120 360,155 400,135 400,300 0,300" fill="url(#mountain)" opacity="0.9"/>
+
+  <!-- Mountains foreground (closer, darker) -->
+  <polygon points="0,280 80,200 160,230 240,190 320,215 400,195 400,300 0,300" fill="#050310" opacity="0.95"/>
+
+  <!-- Snow peaks -->
+  <polygon points="60,140 75,155 45,155" fill="#e2e8f0" opacity="0.7"/>
+  <polygon points="180,130 198,148 162,148" fill="#e2e8f0" opacity="0.6"/>
+  <polygon points="300,120 318,140 282,140" fill="#e2e8f0" opacity="0.7"/>
+
+  <!-- Reflection in water (bottom) -->
+  <rect x="0" y="265" width="400" height="35" fill="#0a1020" opacity="0.8"/>
+  <ellipse cx="200" cy="270" rx="200" ry="8" fill="#1a2a6c" opacity="0.4"/>
+  <!-- Water shimmer lines -->
+  <line x1="60" y1="270" x2="120" y2="270" stroke="#818cf8" stroke-width="0.5" opacity="0.4"/>
+  <line x1="200" y1="272" x2="280" y2="272" stroke="#818cf8" stroke-width="0.5" opacity="0.3"/>
+  <line x1="300" y1="268" x2="360" y2="268" stroke="#818cf8" stroke-width="0.5" opacity="0.4"/>
+
+  <!-- AI Enhanced badge -->
+  <rect x="10" y="270" width="90" height="20" rx="4" fill="#1a0533" opacity="0.9"/>
+  <rect x="10" y="270" width="90" height="20" rx="4" stroke="#7c3aed" stroke-width="0.5"/>
+  <text x="55" y="283" font-family="system-ui,sans-serif" font-size="9" fill="#c084fc" text-anchor="middle">✦ AI Enhanced</text>
+</svg>
