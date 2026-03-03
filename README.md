@@ -77,7 +77,29 @@ supabase/migrations/0001_init_dev_schema.sql
 | `STORAGE_SECRET_KEY` | api | S3 호환 스토리지 시크릿 키 |
 | `REDIS_URL` | api/worker | Redis 연결 URL |
 
-## API 엔드포인트 (Sprint 1)
+## 사용 흐름
+
+### 업로드 → AI 보정 요청
+
+1. `/dashboard` 접속 후 **파일 선택** 클릭 → 이미지/영상 업로드
+2. 업로드 완료(✓ 표시) 후 프롬프트 입력창에 선택적으로 힌트 입력
+   - 예: `선명하게, 노이즈 제거`
+3. **AI 보정 요청** 버튼 클릭
+4. 작업 목록에 `pending` 상태 행이 추가되며 Celery 워커가 처리
+
+### 프롬프트 입력 → AI 생성 요청
+
+1. `/dashboard` 접속 (파일 업로드 불필요)
+2. 프롬프트 입력창에 원하는 이미지 설명 입력
+   - 예: `사이버펑크 도시 야경, 네온 사인`
+3. **AI 생성 요청** 버튼 클릭
+4. 작업 목록에 `pending` 상태 행이 추가되며 Celery 워커가 생성 처리
+
+---
+
+## API 엔드포인트
+
+### Sprint 1
 
 | Method | Path | 설명 |
 |--------|------|------|
@@ -87,7 +109,22 @@ supabase/migrations/0001_init_dev_schema.sql
 | GET | `/api/jobs` | 작업 목록 조회 |
 | GET | `/api/jobs/{id}` | 작업 단건 조회 |
 
+### Sprint 2 (AI endpoints)
+
+| Method | Path | Body | 설명 |
+|--------|------|------|------|
+| POST | `/api/ai/enhance` | `{object_key, prompt?}` | 업로드 파일 AI 보정 |
+| POST | `/api/ai/generate` | `{prompt, width?, height?}` | 프롬프트 기반 AI 이미지 생성 |
+
 전체 문서: `http://localhost:8000/docs`
+
+### DB 마이그레이션 (Sprint 2)
+
+Supabase 대시보드 → SQL Editor에서 추가 실행:
+
+```
+supabase/migrations/0002_add_mode_prompt.sql
+```
 
 ## TODO (Sprint 2+)
 

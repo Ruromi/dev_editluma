@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -23,6 +23,8 @@ class JobResponse(BaseModel):
     filename: str
     object_key: str
     type: Literal["image", "video"]
+    mode: Optional[str] = None
+    prompt: Optional[str] = None
     status: JobStatus
     created_at: str
 

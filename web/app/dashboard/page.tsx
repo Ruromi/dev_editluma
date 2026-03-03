@@ -3,11 +3,14 @@
 import { useState, useRef } from "react";
 
 type JobStatus = "pending" | "processing" | "done" | "failed";
+type JobMode = "enhance" | "generate";
 
 interface Job {
   id: string;
   filename: string;
   type: "image" | "video";
+  mode?: JobMode;
+  prompt?: string;
   status: JobStatus;
   created_at: string;
 }
@@ -26,47 +29,39 @@ const STATUS_COLOR: Record<JobStatus, string> = {
   failed: "text-red-400 bg-red-400/10",
 };
 
-// Placeholder jobs for UI skeleton
-const MOCK_JOBS: Job[] = [
-  {
-    id: "job_001",
-    filename: "photo_01.jpg",
-    type: "image",
-    status: "done",
-    created_at: "2026-03-03T09:00:00Z",
-  },
-  {
-    id: "job_002",
-    filename: "clip_02.mp4",
-    type: "video",
-    status: "processing",
-    created_at: "2026-03-03T09:10:00Z",
-  },
-  {
-    id: "job_003",
-    filename: "photo_03.png",
-    type: "image",
-    status: "pending",
-    created_at: "2026-03-03T09:20:00Z",
-  },
-];
+const MODE_LABEL: Record<JobMode, string> = {
+  enhance: "AI 보정",
+  generate: "AI 생성",
+};
 
 export default function DashboardPage() {
-  const [jobs, setJobs] = useState<Job[]>(MOCK_JOBS);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Uploaded file state (set after successful presign + PUT)
+  const [uploadedKey, setUploadedKey] = useState<string | null>(null);
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+
+  const [prompt, setPrompt] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+  // -------------------------------------------------------------------------
+  // Step 1: Upload file → store object_key (no job created yet)
+  // -------------------------------------------------------------------------
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
+    setUploadedKey(null);
+    setUploadedFilename(null);
     setUploading(true);
 
     try {
-      // 1) Get presigned URL from API
+      // 1) Get presigned URL
       const presignRes = await fetch(`${API_URL}/api/upload/presign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -83,16 +78,8 @@ export default function DashboardPage() {
       });
       if (!putRes.ok) throw new Error("파일 업로드 실패");
 
-      // 3) Create job
-      const jobRes = await fetch(`${API_URL}/api/jobs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ object_key, filename: file.name }),
-      });
-      if (!jobRes.ok) throw new Error("작업 생성 실패");
-      const newJob: Job = await jobRes.json();
-
-      setJobs((prev) => [newJob, ...prev]);
+      setUploadedKey(object_key);
+      setUploadedFilename(file.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류");
     } finally {
@@ -101,9 +88,67 @@ export default function DashboardPage() {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Step 2a: AI 보정 요청
+  // -------------------------------------------------------------------------
+  async function handleEnhance() {
+    if (!uploadedKey) {
+      setError("먼저 파일을 업로드하세요.");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/api/ai/enhance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ object_key: uploadedKey, prompt: prompt || undefined }),
+      });
+      if (!res.ok) throw new Error("AI 보정 요청 실패");
+      const newJob: Job = await res.json();
+      setJobs((prev) => [newJob, ...prev]);
+      setUploadedKey(null);
+      setUploadedFilename(null);
+      setPrompt("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "알 수 없는 오류");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Step 2b: AI 생성 요청
+  // -------------------------------------------------------------------------
+  async function handleGenerate() {
+    if (!prompt.trim()) {
+      setError("프롬프트를 입력하세요.");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_URL}/api/ai/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+      if (!res.ok) throw new Error("AI 생성 요청 실패");
+      const newJob: Job = await res.json();
+      setJobs((prev) => [newJob, ...prev]);
+      setPrompt("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "알 수 없는 오류");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <div className="space-y-8">
-      {/* Upload section */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Upload section                                                       */}
+      {/* ------------------------------------------------------------------ */}
       <section className="border border-dashed border-gray-700 rounded-xl p-8 flex flex-col items-center gap-4">
         <p className="text-gray-400">이미지 또는 영상을 업로드하세요</p>
         <input
@@ -112,20 +157,72 @@ export default function DashboardPage() {
           accept="image/*,video/*"
           className="hidden"
           onChange={handleFileSelect}
-          disabled={uploading}
+          disabled={uploading || submitting}
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || submitting}
           className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition px-6 py-3 rounded-lg font-semibold text-white"
         >
           {uploading ? "업로드 중…" : "파일 선택"}
         </button>
-        {error && <p className="text-red-400 text-sm">{error}</p>}
+
+        {uploadedFilename && (
+          <p className="text-green-400 text-sm">
+            ✓ 업로드 완료: <span className="font-mono">{uploadedFilename}</span>
+          </p>
+        )}
+
         <p className="text-xs text-gray-600">JPG / PNG / MP4 / MOV 지원</p>
       </section>
 
-      {/* Job list */}
+      {/* ------------------------------------------------------------------ */}
+      {/* AI Action section                                                    */}
+      {/* ------------------------------------------------------------------ */}
+      <section className="border border-gray-800 rounded-xl p-6 space-y-4">
+        <h2 className="text-lg font-semibold">AI 작업 요청</h2>
+
+        {/* Prompt input */}
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">
+            프롬프트 (보정 힌트 또는 생성 지시문)
+          </label>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            disabled={submitting}
+            rows={3}
+            placeholder="예: 선명하게 보정해줘 / 사이버펑크 도시 야경"
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-indigo-500 disabled:opacity-50 resize-none"
+          />
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleEnhance}
+            disabled={submitting || !uploadedKey}
+            title={!uploadedKey ? "먼저 파일을 업로드하세요" : undefined}
+            className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition px-5 py-2.5 rounded-lg font-semibold text-white text-sm"
+          >
+            {submitting ? "요청 중…" : "AI 보정 요청"}
+          </button>
+          <button
+            onClick={handleGenerate}
+            disabled={submitting || !prompt.trim()}
+            title={!prompt.trim() ? "프롬프트를 입력하세요" : undefined}
+            className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition px-5 py-2.5 rounded-lg font-semibold text-white text-sm"
+          >
+            {submitting ? "요청 중…" : "AI 생성 요청"}
+          </button>
+        </div>
+
+        {error && <p className="text-red-400 text-sm">{error}</p>}
+      </section>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Job list                                                             */}
+      {/* ------------------------------------------------------------------ */}
       <section>
         <h2 className="text-lg font-semibold mb-4">작업 목록</h2>
         {jobs.length === 0 ? (
@@ -136,7 +233,8 @@ export default function DashboardPage() {
               <thead className="bg-gray-900 text-gray-400">
                 <tr>
                   <th className="px-4 py-3 text-left">파일명</th>
-                  <th className="px-4 py-3 text-left">유형</th>
+                  <th className="px-4 py-3 text-left">모드</th>
+                  <th className="px-4 py-3 text-left">프롬프트</th>
                   <th className="px-4 py-3 text-left">상태</th>
                   <th className="px-4 py-3 text-left">생성일</th>
                   <th className="px-4 py-3 text-left">액션</th>
@@ -146,7 +244,12 @@ export default function DashboardPage() {
                 {jobs.map((job) => (
                   <tr key={job.id} className="hover:bg-gray-900/50 transition">
                     <td className="px-4 py-3 font-mono">{job.filename}</td>
-                    <td className="px-4 py-3 capitalize">{job.type}</td>
+                    <td className="px-4 py-3">
+                      {job.mode ? MODE_LABEL[job.mode] : "—"}
+                    </td>
+                    <td className="px-4 py-3 max-w-xs truncate text-gray-400">
+                      {job.prompt ?? "—"}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLOR[job.status]}`}

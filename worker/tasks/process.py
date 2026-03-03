@@ -59,10 +59,13 @@ def process_job(self: Task, job_id: str) -> dict:
             raise ValueError(f"Job {job_id} not found in DB")
 
         job_type = job.get("type", "image")
+        mode = job.get("mode")
 
         # --- Pipeline dispatch (Sprint 2+) ---
-        if job_type == "image":
-            output_key = _process_image(job)
+        if mode == "generate":
+            output_key = _generate_image(job)
+        elif job_type == "image":
+            output_key = _enhance_image(job)
         else:
             output_key = _process_video(job)
 
@@ -86,11 +89,23 @@ def process_job(self: Task, job_id: str) -> dict:
 # Pipeline stubs — replace with real implementations in Sprint 2+
 # ---------------------------------------------------------------------------
 
-def _process_image(job: dict) -> str:
-    """Image pipeline: denoise → upscale → color correction."""
-    logger.info("Image pipeline for job %s (stub)", job["id"])
+def _enhance_image(job: dict) -> str:
+    """Image enhance pipeline: denoise → upscale → color correction."""
+    logger.info("Enhance pipeline for job %s (stub)", job["id"])
     # TODO: integrate Real-ESRGAN / Topaz / custom model
     return job["object_key"].replace("uploads/", "outputs/", 1)
+
+
+def _generate_image(job: dict) -> str:
+    """Generate pipeline: text prompt → AI image generation."""
+    import uuid as _uuid
+    logger.info(
+        "Generate pipeline for job %s prompt=%r (stub)",
+        job["id"],
+        job.get("prompt", ""),
+    )
+    # TODO: integrate text-to-image model
+    return f"outputs/generated/{_uuid.uuid4()}.png"
 
 
 def _process_video(job: dict) -> str:
