@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.core.storage import generate_presigned_download_url
 from app.core.supabase import db_schema, get_supabase
 from worker.tasks.process import process_job
 
@@ -34,8 +35,12 @@ class AiJobResponse(BaseModel):
     type: str
     mode: str
     prompt: Optional[str] = None
+    original_prompt: Optional[str] = None
+    enhanced_prompt: Optional[str] = None
     status: str
     created_at: str
+    output_key: Optional[str] = None
+    output_url: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------

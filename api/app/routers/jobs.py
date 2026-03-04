@@ -5,6 +5,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app.core.storage import generate_presigned_download_url
 from app.core.supabase import db_schema, get_supabase
 from worker.tasks.process import process_job
 
@@ -27,8 +28,23 @@ class JobResponse(BaseModel):
     type: Literal["image", "video"]
     mode: Optional[str] = None
     prompt: Optional[str] = None
+    original_prompt: Optional[str] = None
+    enhanced_prompt: Optional[str] = None
     status: JobStatus
     created_at: str
+    output_key: Optional[str] = None
+    output_url: Optional[str] = None
+
+
+def _make_response(row: dict) -> JobResponse:
+    """Build a JobResponse, adding a presigned download URL when output_key is set."""
+    output_url: Optional[str] = None
+    if row.get("output_key"):
+        try:
+            output_url = generate_presigned_download_url(row["output_key"])
+        except Exception:
+            pass
+    return JobResponse(**{**row, "output_url": output_url})
 
 
 def _infer_type(filename: str) -> Literal["image", "video"]:
@@ -72,7 +88,7 @@ async def create_job(body: CreateJobRequest):
     # Enqueue Celery task (non-blocking)
     process_job.delay(job_id)
 
-    return JobResponse(**row)
+    return _make_response(row)
 
 
 @router.get("", response_model=list[JobResponse])
@@ -90,7 +106,7 @@ async def list_jobs():
     except Exception as exc:
         raise HTTPException(status_code=503, detail=_DB_ERROR_MSG) from exc
 
-    return [JobResponse(**r) for r in (result.data or [])]
+    return [_make_response(r) for r in (result.data or [])]
 
 
 @router.get("/{job_id}", response_model=JobResponse)
@@ -111,4 +127,4 @@ async def get_job(job_id: str):
 
     if not result.data:
         raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
-    return JobResponse(**result.data)
+    return _make_response(result.data)

@@ -26,10 +26,15 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
 
+    # Ideogram
+    ideogram_api_key: str = ""
+    ideogram_model: str = "V_2"
+
     # App
     environment: str = "dev"
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
-    presign_expiry_seconds: int = 300
+    presign_upload_expiry_seconds: int = 300
+    presign_download_expiry_seconds: int = 3600
 
 
 settings = Settings()

@@ -11,9 +11,12 @@ interface Job {
   type: "image" | "video";
   mode?: JobMode;
   prompt?: string;
+  original_prompt?: string;
+  enhanced_prompt?: string;
   status: JobStatus;
   created_at: string;
   output_key?: string;
+  output_url?: string;
 }
 
 const STATUS_LABEL: Record<JobStatus, string> = {
@@ -66,22 +69,132 @@ function SkeletonCard({ job }: { job: Job }) {
 }
 
 // ---------------------------------------------------------------------------
+// Image detail modal
+// ---------------------------------------------------------------------------
+function ImageDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
+  const originalPrompt = job.original_prompt || job.prompt;
+  const enhancedPrompt = job.enhanced_prompt;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-gray-950 border border-gray-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Image */}
+        {job.output_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={job.output_url}
+            alt={originalPrompt ?? job.filename}
+            className="w-full rounded-t-2xl object-cover"
+          />
+        ) : (
+          <div className="aspect-square flex items-center justify-center bg-gray-900 rounded-t-2xl">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="w-12 h-12 text-gray-700"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+        )}
+
+        {/* Info */}
+        <div className="p-5 space-y-4">
+          {/* Header row */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-600">
+              {new Date(job.created_at).toLocaleString("ko-KR")}
+            </span>
+            <div className="flex items-center gap-3">
+              {job.output_url && (
+                <a
+                  href={job.output_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
+                >
+                  다운로드
+                </a>
+              )}
+              <button
+                onClick={onClose}
+                className="text-gray-600 hover:text-gray-300 transition-colors"
+                aria-label="닫기"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* 입력 프롬프트 */}
+          <div className="space-y-1.5">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              입력 프롬프트
+            </h3>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              {originalPrompt || "—"}
+            </p>
+          </div>
+
+          {/* AI 보정 프롬프트 */}
+          <div className="space-y-1.5">
+            <h3 className="text-xs font-semibold text-indigo-400/70 uppercase tracking-wider">
+              AI 보정 프롬프트
+            </h3>
+            <p className="text-sm text-indigo-200/70 leading-relaxed">
+              {enhancedPrompt || "—"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Gallery card: completed / failed job
 // ---------------------------------------------------------------------------
-function GalleryCard({ job }: { job: Job }) {
+function GalleryCard({ job, onClick }: { job: Job; onClick: () => void }) {
   const isDone = job.status === "done";
 
   return (
-    <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900">
-      {/* Thumbnail placeholder */}
+    <div
+      className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900 group cursor-pointer hover:border-gray-700 transition-colors"
+      onClick={onClick}
+    >
+      {/* Thumbnail */}
       <div
-        className={`aspect-square relative flex items-center justify-center ${
-          isDone
+        className={`aspect-square relative overflow-hidden flex items-center justify-center ${
+          isDone && !job.output_url
             ? "bg-gradient-to-br from-indigo-950/80 to-gray-900"
-            : "bg-gradient-to-br from-red-950/40 to-gray-900"
+            : !isDone
+            ? "bg-gradient-to-br from-red-950/40 to-gray-900"
+            : ""
         }`}
       >
-        {isDone ? (
+        {isDone && job.output_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={job.output_url}
+            alt={job.original_prompt ?? job.prompt ?? job.filename}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : isDone ? (
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="w-10 h-10 text-indigo-800/60"
@@ -124,9 +237,9 @@ function GalleryCard({ job }: { job: Job }) {
         </span>
       </div>
       {/* Meta */}
-      <div className="p-3 space-y-1">
+      <div className="p-3 space-y-2">
         <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed min-h-[2.25rem]">
-          {job.prompt || "—"}
+          {job.original_prompt || job.prompt || "—"}
         </p>
         <p className="text-xs text-gray-700">
           {new Date(job.created_at).toLocaleString("ko-KR")}
@@ -140,6 +253,8 @@ function GalleryCard({ job }: { job: Job }) {
 // Gallery section
 // ---------------------------------------------------------------------------
 function GallerySection({ jobs }: { jobs: Job[] }) {
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+
   const activeJobs = jobs.filter(
     (j) => j.status === "pending" || j.status === "processing"
   );
@@ -190,9 +305,13 @@ function GallerySection({ jobs }: { jobs: Job[] }) {
           ))}
           {/* Finished jobs */}
           {finishedJobs.map((job) => (
-            <GalleryCard key={job.id} job={job} />
+            <GalleryCard key={job.id} job={job} onClick={() => setSelectedJob(job)} />
           ))}
         </div>
+      )}
+
+      {selectedJob && (
+        <ImageDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
       )}
     </section>
   );
@@ -545,10 +664,15 @@ export default function DashboardPage() {
                       {new Date(job.created_at).toLocaleString("ko-KR")}
                     </td>
                     <td className="px-4 py-3">
-                      {job.status === "done" ? (
-                        <button className="text-indigo-400 hover:text-indigo-300 hover:underline text-xs transition-colors">
+                      {job.status === "done" && job.output_url ? (
+                        <a
+                          href={job.output_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-400 hover:text-indigo-300 hover:underline text-xs transition-colors"
+                        >
                           다운로드
-                        </button>
+                        </a>
                       ) : (
                         <span className="text-gray-700 text-xs">—</span>
                       )}

@@ -30,17 +30,17 @@ def generate_presigned_upload_url(object_key: str, content_type: str) -> str:
             "Key": object_key,
             "ContentType": content_type,
         },
-        ExpiresIn=settings.presign_expiry_seconds,
+        ExpiresIn=settings.presign_upload_expiry_seconds,
     )
     return url
 
 
 def generate_presigned_download_url(object_key: str) -> str:
-    """Return a presigned GET URL valid for `presign_expiry_seconds`."""
+    """Return a presigned GET URL valid for `presign_download_expiry_seconds`."""
     client = _get_s3_client()
     url = client.generate_presigned_url(
         "get_object",
         Params={"Bucket": settings.storage_bucket, "Key": object_key},
-        ExpiresIn=settings.presign_expiry_seconds,
+        ExpiresIn=settings.presign_download_expiry_seconds,
     )
     return url
