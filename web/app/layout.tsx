@@ -18,7 +18,7 @@ export default function RootLayout({
           <span className="text-xl font-bold text-indigo-400">EditLuma</span>
           <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">dev</span>
         </header>
-        <main className="max-w-5xl mx-auto px-6 py-8">{children}</main>
+        <main>{children}</main>
       </body>
     </html>
   );

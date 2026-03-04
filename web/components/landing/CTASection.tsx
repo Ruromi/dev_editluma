@@ -2,7 +2,8 @@ import Link from "next/link";
 
 export default function CTASection() {
   return (
-    <section className="rounded-2xl border border-indigo-900/60 bg-gradient-to-br from-indigo-950 to-purple-950 p-10 text-center">
+    <section className="max-w-5xl mx-auto w-full px-6">
+      <div className="rounded-2xl border border-indigo-900/60 bg-gradient-to-br from-indigo-950 to-purple-950 p-10 text-center">
       <h2 className="mb-3 text-2xl font-bold text-white">
         지금 바로 업로드해보세요
       </h2>
@@ -15,6 +16,7 @@ export default function CTASection() {
       >
         대시보드로 이동 →
       </Link>
+      </div>
     </section>
   );
 }

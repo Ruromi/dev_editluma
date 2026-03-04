@@ -1,14 +1,21 @@
+"use client";
 import Link from "next/link";
 
 export default function HeroSection() {
   return (
-    <section className="relative -mx-6 -mt-8 overflow-hidden rounded-b-2xl">
+    <section
+      className="relative w-full overflow-hidden bg-gradient-to-br from-indigo-950 to-gray-900"
+      style={{ minHeight: 480 }}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/landing/hero-user.jpg"
         alt="EditLuma — AI 인물 보정 서비스 — 실제 인물 사진 피부·선명도·색감 업스케일"
         className="w-full object-cover object-top"
         style={{ maxHeight: 520, display: "block" }}
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+        }}
       />
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black/40 px-6 text-center">
         <h1 className="text-4xl font-bold leading-tight text-white drop-shadow-lg sm:text-5xl">
