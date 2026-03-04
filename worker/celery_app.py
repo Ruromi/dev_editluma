@@ -8,10 +8,11 @@ from pathlib import Path
 from celery import Celery
 from dotenv import load_dotenv
 
-# Load shared env first as fallback, then local .env (override=False keeps already-set vars)
+# Load shared env as fallback, then api/.env with override=True so api values win
 _SHARED_ENV = Path(__file__).parents[2] / ".env.shared"
+_API_ENV = Path(__file__).parents[1] / "api" / ".env"
 load_dotenv(_SHARED_ENV)
-load_dotenv()
+load_dotenv(_API_ENV, override=True)
 
 broker = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 backend = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
