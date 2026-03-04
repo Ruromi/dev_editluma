@@ -39,6 +39,30 @@ class AiJobResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+_DB_ERROR_MSG = "데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+
+
+def _db_insert(row: dict) -> None:
+    """Insert a job row, raising a friendly HTTPException on DB failure."""
+    supabase = get_supabase()
+    try:
+        result = (
+            supabase.schema(db_schema())
+            .table("jobs")
+            .insert(row)
+            .execute()
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=_DB_ERROR_MSG) from exc
+
+    if not result.data:
+        raise HTTPException(status_code=503, detail=_DB_ERROR_MSG)
+
+
+# ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
@@ -70,16 +94,7 @@ async def enhance_image(body: EnhanceRequest):
         "created_at": now,
     }
 
-    supabase = get_supabase()
-    result = (
-        supabase.schema(db_schema())
-        .table("jobs")
-        .insert(row)
-        .execute()
-    )
-    if not result.data:
-        raise HTTPException(status_code=500, detail="DB insert failed")
-
+    _db_insert(row)
     process_job.delay(job_id)
     return AiJobResponse(**row)
 
@@ -108,15 +123,6 @@ async def generate_image(body: GenerateRequest):
         "created_at": now,
     }
 
-    supabase = get_supabase()
-    result = (
-        supabase.schema(db_schema())
-        .table("jobs")
-        .insert(row)
-        .execute()
-    )
-    if not result.data:
-        raise HTTPException(status_code=500, detail="DB insert failed")
-
+    _db_insert(row)
     process_job.delay(job_id)
     return AiJobResponse(**row)

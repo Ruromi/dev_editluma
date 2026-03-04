@@ -12,6 +12,8 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 JobStatus = Literal["pending", "processing", "done", "failed"]
 
+_DB_ERROR_MSG = "데이터베이스 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+
 
 class CreateJobRequest(BaseModel):
     object_key: str
@@ -52,16 +54,20 @@ async def create_job(body: CreateJobRequest):
         "created_at": now,
     }
 
-    # Persist to Supabase (schema-aware)
+    # Persist to Supabase (schema-aware, with public fallback)
     supabase = get_supabase()
-    result = (
-        supabase.schema(db_schema())
-        .table("jobs")
-        .insert(row)
-        .execute()
-    )
+    try:
+        result = (
+            supabase.schema(db_schema())
+            .table("jobs")
+            .insert(row)
+            .execute()
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=_DB_ERROR_MSG) from exc
+
     if not result.data:
-        raise HTTPException(status_code=500, detail="DB insert failed")
+        raise HTTPException(status_code=503, detail=_DB_ERROR_MSG)
 
     # Enqueue Celery task (non-blocking)
     process_job.delay(job_id)
@@ -73,13 +79,17 @@ async def create_job(body: CreateJobRequest):
 async def list_jobs():
     """Return all jobs ordered by created_at desc."""
     supabase = get_supabase()
-    result = (
-        supabase.schema(db_schema())
-        .table("jobs")
-        .select("*")
-        .order("created_at", desc=True)
-        .execute()
-    )
+    try:
+        result = (
+            supabase.schema(db_schema())
+            .table("jobs")
+            .select("*")
+            .order("created_at", desc=True)
+            .execute()
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=_DB_ERROR_MSG) from exc
+
     return [JobResponse(**r) for r in (result.data or [])]
 
 
@@ -87,14 +97,18 @@ async def list_jobs():
 async def get_job(job_id: str):
     """Return a single job by ID."""
     supabase = get_supabase()
-    result = (
-        supabase.schema(db_schema())
-        .table("jobs")
-        .select("*")
-        .eq("id", job_id)
-        .single()
-        .execute()
-    )
+    try:
+        result = (
+            supabase.schema(db_schema())
+            .table("jobs")
+            .select("*")
+            .eq("id", job_id)
+            .single()
+            .execute()
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail=_DB_ERROR_MSG) from exc
+
     if not result.data:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
     return JobResponse(**result.data)
