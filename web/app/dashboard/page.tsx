@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 type JobStatus = "pending" | "processing" | "done" | "failed";
 type JobMode = "enhance" | "generate";
@@ -13,6 +13,7 @@ interface Job {
   prompt?: string;
   status: JobStatus;
   created_at: string;
+  output_key?: string;
 }
 
 const STATUS_LABEL: Record<JobStatus, string> = {
@@ -34,6 +35,172 @@ const MODE_LABEL: Record<JobMode, string> = {
   generate: "AI 생성",
 };
 
+const POLL_INTERVAL_MS = 3000;
+
+// ---------------------------------------------------------------------------
+// Gallery card: skeleton shimmer for pending / processing
+// ---------------------------------------------------------------------------
+function SkeletonCard({ job }: { job: Job }) {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900">
+      {/* Shimmer image area */}
+      <div className="aspect-square relative overflow-hidden animate-shimmer">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5">
+          <div className="w-7 h-7 rounded-full border-2 border-indigo-500/70 border-t-transparent animate-spin" />
+          <span className="text-xs text-gray-500">
+            {job.status === "processing" ? "생성 중…" : "대기 중…"}
+          </span>
+        </div>
+      </div>
+      {/* Meta */}
+      <div className="p-3 space-y-2">
+        {job.prompt ? (
+          <p className="text-xs text-gray-600 truncate">{job.prompt}</p>
+        ) : (
+          <div className="h-2.5 bg-gray-800 rounded animate-pulse w-3/4" />
+        )}
+        <div className="h-2 bg-gray-800/60 rounded animate-pulse w-2/5" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Gallery card: completed / failed job
+// ---------------------------------------------------------------------------
+function GalleryCard({ job }: { job: Job }) {
+  const isDone = job.status === "done";
+
+  return (
+    <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900">
+      {/* Thumbnail placeholder */}
+      <div
+        className={`aspect-square relative flex items-center justify-center ${
+          isDone
+            ? "bg-gradient-to-br from-indigo-950/80 to-gray-900"
+            : "bg-gradient-to-br from-red-950/40 to-gray-900"
+        }`}
+      >
+        {isDone ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-10 h-10 text-indigo-800/60"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-8 h-8 text-red-800/60"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+            />
+          </svg>
+        )}
+        {/* Status badge */}
+        <span
+          className={`absolute top-2 right-2 px-2 py-0.5 text-xs rounded-full border font-medium ${
+            isDone
+              ? "bg-green-900/60 text-green-300 border-green-800/50"
+              : "bg-red-900/60 text-red-300 border-red-800/50"
+          }`}
+        >
+          {isDone ? "완료" : "실패"}
+        </span>
+      </div>
+      {/* Meta */}
+      <div className="p-3 space-y-1">
+        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed min-h-[2.25rem]">
+          {job.prompt || "—"}
+        </p>
+        <p className="text-xs text-gray-700">
+          {new Date(job.created_at).toLocaleString("ko-KR")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Gallery section
+// ---------------------------------------------------------------------------
+function GallerySection({ jobs }: { jobs: Job[] }) {
+  const activeJobs = jobs.filter(
+    (j) => j.status === "pending" || j.status === "processing"
+  );
+  const finishedJobs = jobs.filter(
+    (j) => j.status === "done" || j.status === "failed"
+  );
+
+  return (
+    <section className="space-y-4">
+      <div className="flex items-center gap-3">
+        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+          생성 갤러리
+        </h2>
+        {activeJobs.length > 0 && (
+          <span className="flex items-center gap-1.5 text-xs text-blue-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+            {activeJobs.length}개 생성 중
+          </span>
+        )}
+      </div>
+
+      {jobs.length === 0 ? (
+        <div className="border border-dashed border-gray-800 rounded-2xl py-14 flex flex-col items-center gap-2 text-center">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-8 h-8 text-gray-700 mb-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={1}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+            />
+          </svg>
+          <p className="text-gray-700 text-sm">아직 생성된 이미지가 없습니다</p>
+          <p className="text-gray-800 text-xs">
+            프롬프트를 입력하여 첫 번째 이미지를 만들어 보세요
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {/* Active jobs (skeleton) shown first */}
+          {activeJobs.map((job) => (
+            <SkeletonCard key={job.id} job={job} />
+          ))}
+          {/* Finished jobs */}
+          {finishedJobs.map((job) => (
+            <GalleryCard key={job.id} job={job} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main dashboard page
+// ---------------------------------------------------------------------------
 export default function DashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -55,6 +222,35 @@ export default function DashboardPage() {
   const apiConnErrMsg = API_URL
     ? `API 서버(${API_URL})에 연결할 수 없습니다. 서버 URL과 네트워크 상태를 확인하세요.`
     : "API 서버에 연결할 수 없습니다. Next.js 개발 서버 및 FastAPI(포트 8000)가 실행 중인지 확인하세요.";
+
+  // -------------------------------------------------------------------------
+  // Job fetching & polling
+  // -------------------------------------------------------------------------
+  const fetchJobs = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/jobs`);
+      if (!res.ok) return;
+      const data: Job[] = await res.json();
+      setJobs(data);
+    } catch {
+      // silently ignore polling errors
+    }
+  }, [API_URL]);
+
+  // Initial load on mount
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  // Poll every POLL_INTERVAL_MS while any job is pending/processing
+  useEffect(() => {
+    const hasActive = jobs.some(
+      (j) => j.status === "pending" || j.status === "processing"
+    );
+    if (!hasActive) return;
+    const timer = setTimeout(fetchJobs, POLL_INTERVAL_MS);
+    return () => clearTimeout(timer);
+  }, [jobs, fetchJobs]);
 
   // -------------------------------------------------------------------------
   // Step 1: Upload file → store object_key (no job created yet)
@@ -180,6 +376,8 @@ export default function DashboardPage() {
     }
   }
 
+  const generateJobs = jobs.filter((j) => j.mode === "generate");
+
   return (
     <div className="space-y-12">
 
@@ -300,6 +498,11 @@ export default function DashboardPage() {
           {error}
         </div>
       )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Gallery: AI generate jobs                                           */}
+      {/* ------------------------------------------------------------------ */}
+      <GallerySection jobs={generateJobs} />
 
       {/* ------------------------------------------------------------------ */}
       {/* Job list                                                             */}
