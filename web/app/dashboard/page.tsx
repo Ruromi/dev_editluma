@@ -46,34 +46,58 @@ export default function DashboardPage() {
   const [prompt, setPrompt] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  // When NEXT_PUBLIC_API_URL is unset (empty string), fetch uses relative paths
+  // which are proxied by Next.js rewrites → no CORS. If set explicitly (e.g.
+  // for a remote API), direct requests are made instead.
+  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
   // -------------------------------------------------------------------------
   // Step 1: Upload file → store object_key (no job created yet)
   // -------------------------------------------------------------------------
+  const ACCEPTED_TYPES = ["image/jpeg", "image/png", "video/mp4", "video/quicktime"];
+
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
+
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      setError("지원하지 않는 파일 형식입니다. JPG, PNG, MP4, MOV 파일만 업로드할 수 있습니다.");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     setUploadedKey(null);
     setUploadedFilename(null);
     setUploading(true);
 
     try {
-      const presignRes = await fetch(`${API_URL}/api/upload/presign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: file.name, content_type: file.type }),
-      });
-      if (!presignRes.ok) throw new Error("presign 요청 실패");
+      let presignRes: Response;
+      try {
+        presignRes = await fetch(`${API_URL}/api/upload/presign`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename: file.name, content_type: file.type }),
+        });
+      } catch {
+        throw new Error("API 서버에 연결할 수 없습니다 (localhost:8000 실행 여부 확인)");
+      }
+      if (!presignRes.ok) {
+        const detail = await presignRes.text().catch(() => "");
+        throw new Error(`presign 요청 실패 (${presignRes.status})${detail ? `: ${detail}` : ""}`);
+      }
       const { upload_url, object_key } = await presignRes.json();
 
-      const putRes = await fetch(upload_url, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!putRes.ok) throw new Error("파일 업로드 실패");
+      let putRes: Response;
+      try {
+        putRes = await fetch(upload_url, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+      } catch {
+        throw new Error("스토리지에 파일을 업로드할 수 없습니다 (네트워크 오류)");
+      }
+      if (!putRes.ok) throw new Error(`파일 업로드 실패 (${putRes.status})`);
 
       setUploadedKey(object_key);
       setUploadedFilename(file.name);
@@ -96,12 +120,17 @@ export default function DashboardPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/api/ai/enhance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ object_key: uploadedKey, prompt: prompt || undefined }),
-      });
-      if (!res.ok) throw new Error("AI 보정 요청 실패");
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/ai/enhance`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ object_key: uploadedKey, prompt: prompt || undefined }),
+        });
+      } catch {
+        throw new Error("API 서버에 연결할 수 없습니다 (localhost:8000 실행 여부 확인)");
+      }
+      if (!res.ok) throw new Error(`AI 보정 요청 실패 (${res.status})`);
       const newJob: Job = await res.json();
       setJobs((prev) => [newJob, ...prev]);
       setUploadedKey(null);
@@ -125,12 +154,17 @@ export default function DashboardPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/api/ai/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim() }),
-      });
-      if (!res.ok) throw new Error("AI 생성 요청 실패");
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/ai/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: prompt.trim() }),
+        });
+      } catch {
+        throw new Error("API 서버에 연결할 수 없습니다 (localhost:8000 실행 여부 확인)");
+      }
+      if (!res.ok) throw new Error(`AI 생성 요청 실패 (${res.status})`);
       const newJob: Job = await res.json();
       setJobs((prev) => [newJob, ...prev]);
       setPrompt("");
@@ -210,7 +244,7 @@ export default function DashboardPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*,video/*"
+            accept=".jpg,.jpeg,.png,.mp4,.mov,image/jpeg,image/png,video/mp4,video/quicktime"
             className="hidden"
             onChange={handleFileSelect}
             disabled={uploading || submitting}

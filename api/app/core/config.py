@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # App
     environment: str = "dev"
-    cors_origins: list[str] = ["http://localhost:3001"]
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
     presign_expiry_seconds: int = 300
 
 
