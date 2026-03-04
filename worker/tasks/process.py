@@ -131,6 +131,7 @@ def _generate_image(job: dict) -> tuple[str, str]:
 
     api_key = os.getenv("IDEOGRAM_API_KEY", "")
     if not api_key:
+        logger.error("IDEOGRAM_API_KEY not found — set it in api/.env or .env.shared (parent of repo)")
         raise RuntimeError("IDEOGRAM_API_KEY가 설정되지 않았습니다.")
 
     model = os.getenv("IDEOGRAM_MODEL", "V_2")

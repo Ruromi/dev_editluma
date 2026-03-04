@@ -1,9 +1,14 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# shared env one level above the repo root; local .env (listed last) takes precedence
+_SHARED_ENV = Path(__file__).parents[4] / ".env.shared"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(_SHARED_ENV, ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
