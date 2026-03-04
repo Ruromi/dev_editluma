@@ -46,10 +46,15 @@ export default function DashboardPage() {
   const [prompt, setPrompt] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // When NEXT_PUBLIC_API_URL is unset (empty string), fetch uses relative paths
-  // which are proxied by Next.js rewrites → no CORS. If set explicitly (e.g.
-  // for a remote API), direct requests are made instead.
-  const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+  // 로컬 개발: NEXT_PUBLIC_API_URL을 비워두면 상대 경로(/api/*)를 사용하며
+  // Next.js 리라이트가 FastAPI로 프록시 → CORS 불필요.
+  // 원격 API 사용 시에만 절대 URL을 설정하세요.
+  const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+
+  // 연결 실패 시 보여줄 힌트 메시지를 API_URL 설정에 맞게 생성합니다.
+  const apiConnErrMsg = API_URL
+    ? `API 서버(${API_URL})에 연결할 수 없습니다. 서버 URL과 네트워크 상태를 확인하세요.`
+    : "API 서버에 연결할 수 없습니다. Next.js 개발 서버 및 FastAPI(포트 8000)가 실행 중인지 확인하세요.";
 
   // -------------------------------------------------------------------------
   // Step 1: Upload file → store object_key (no job created yet)
@@ -79,7 +84,7 @@ export default function DashboardPage() {
           body: JSON.stringify({ filename: file.name, content_type: file.type }),
         });
       } catch {
-        throw new Error("API 서버에 연결할 수 없습니다 (localhost:8000 실행 여부 확인)");
+        throw new Error(apiConnErrMsg);
       }
       if (!presignRes.ok) {
         const detail = await presignRes.text().catch(() => "");
@@ -95,9 +100,9 @@ export default function DashboardPage() {
           body: file,
         });
       } catch {
-        throw new Error("스토리지에 파일을 업로드할 수 없습니다 (네트워크 오류)");
+        throw new Error("스토리지에 파일을 업로드할 수 없습니다. 네트워크 상태 또는 스토리지 CORS 설정을 확인하세요.");
       }
-      if (!putRes.ok) throw new Error(`파일 업로드 실패 (${putRes.status})`);
+      if (!putRes.ok) throw new Error(`파일 업로드 실패 (HTTP ${putRes.status}). 스토리지 서비스 상태를 확인하세요.`);
 
       setUploadedKey(object_key);
       setUploadedFilename(file.name);
@@ -128,9 +133,9 @@ export default function DashboardPage() {
           body: JSON.stringify({ object_key: uploadedKey, prompt: prompt || undefined }),
         });
       } catch {
-        throw new Error("API 서버에 연결할 수 없습니다 (localhost:8000 실행 여부 확인)");
+        throw new Error(apiConnErrMsg);
       }
-      if (!res.ok) throw new Error(`AI 보정 요청 실패 (${res.status})`);
+      if (!res.ok) throw new Error(`AI 보정 요청 실패 (HTTP ${res.status}). 잠시 후 다시 시도하세요.`);
       const newJob: Job = await res.json();
       setJobs((prev) => [newJob, ...prev]);
       setUploadedKey(null);
@@ -162,9 +167,9 @@ export default function DashboardPage() {
           body: JSON.stringify({ prompt: prompt.trim() }),
         });
       } catch {
-        throw new Error("API 서버에 연결할 수 없습니다 (localhost:8000 실행 여부 확인)");
+        throw new Error(apiConnErrMsg);
       }
-      if (!res.ok) throw new Error(`AI 생성 요청 실패 (${res.status})`);
+      if (!res.ok) throw new Error(`AI 생성 요청 실패 (HTTP ${res.status}). 잠시 후 다시 시도하세요.`);
       const newJob: Job = await res.json();
       setJobs((prev) => [newJob, ...prev]);
       setPrompt("");
