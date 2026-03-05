@@ -13,6 +13,40 @@ from worker.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
+def _translate_to_english(prompt: str) -> str:
+    """한국어가 포함된 프롬프트를 영어로 번역. 영어면 그대로 반환."""
+    import re
+    if not re.search(r"[\uac00-\ud7a3]", prompt):
+        return prompt
+
+    api_key = os.getenv("GROQ_API_KEY", "")
+    if not api_key:
+        logger.warning("GROQ_API_KEY not set — using original prompt")
+        return prompt
+
+    from groq import Groq
+    client = Groq(api_key=api_key)
+    resp = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a prompt translator for an AI image generation service. "
+                    "Translate the user's prompt to English. "
+                    "Output only the translated prompt, nothing else."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.3,
+        max_tokens=300,
+    )
+    translated = resp.choices[0].message.content.strip()
+    logger.info("Translated prompt: %r → %r", prompt, translated)
+    return translated
+
+
 def _get_supabase():
     """Lazy import to avoid circular deps and load .env first."""
     from supabase import create_client
@@ -71,8 +105,13 @@ def process_job(self: Task, job_id: str) -> dict:
                 "enhanced_prompt": enhanced_prompt,
             }
         elif job_type == "image":
-            output_key = _enhance_image(job)
-            update_data = {"status": "done", "output_key": output_key}
+            output_key, translated_prompt = _enhance_image(job)
+            update_data = {
+                "status": "done",
+                "output_key": output_key,
+                "original_prompt": job.get("prompt"),
+                "enhanced_prompt": translated_prompt,
+            }
         else:
             output_key = _process_video(job)
             update_data = {"status": "done", "output_key": output_key}
@@ -97,11 +136,86 @@ def process_job(self: Task, job_id: str) -> dict:
 # Pipeline stubs — replace with real implementations in Sprint 2+
 # ---------------------------------------------------------------------------
 
-def _enhance_image(job: dict) -> str:
-    """Image enhance pipeline: denoise → upscale → color correction."""
-    logger.info("Enhance pipeline for job %s (stub)", job["id"])
-    # TODO: integrate Real-ESRGAN / Topaz / custom model
-    return job["object_key"].replace("uploads/", "outputs/", 1)
+def _enhance_image(job: dict) -> tuple[str, str]:
+    """Image enhance via Ideogram remix: uploaded image + prompt → new image.
+
+    Returns:
+        (output_key, translated_prompt)
+    """
+    import uuid as _uuid
+    import os
+    import httpx
+    import boto3
+    from botocore.config import Config
+
+    api_key = os.getenv("IDEOGRAM_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("IDEOGRAM_API_KEY가 설정되지 않았습니다.")
+
+    model = os.getenv("IDEOGRAM_MODEL", "V_2")
+    prompt = _translate_to_english((job.get("prompt") or "high quality, detailed, professional").strip())
+
+    # 1. S3에서 원본 이미지 다운로드
+    bucket = os.getenv("STORAGE_BUCKET", "editluma-uploads")
+    endpoint = os.getenv("STORAGE_ENDPOINT_URL") or None
+    region = os.getenv("STORAGE_REGION", "ap-northeast-2")
+    access_key = os.getenv("STORAGE_ACCESS_KEY", "")
+    secret_key = os.getenv("STORAGE_SECRET_KEY", "")
+
+    kwargs: dict = dict(
+        region_name=region,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        config=Config(signature_version="s3v4"),
+    )
+    if endpoint:
+        kwargs["endpoint_url"] = endpoint
+
+    s3 = boto3.client("s3", **kwargs)
+    obj = s3.get_object(Bucket=bucket, Key=job["object_key"])
+    image_bytes = obj["Body"].read()
+    content_type = obj.get("ContentType", "image/jpeg")
+
+    import json
+    logger.info("Calling Ideogram remix for job %s prompt=%r", job["id"], prompt)
+
+    image_request = json.dumps({
+        "prompt": prompt,
+        "model": model,
+        "aspect_ratio": "ASPECT_1_1",
+        "image_weight": 90,
+    })
+
+    # 2. Ideogram remix API 호출
+    with httpx.Client(timeout=120) as client:
+        resp = client.post(
+            "https://api.ideogram.ai/remix",
+            headers={"Api-Key": api_key},
+            data={"image_request": image_request},
+            files={"image_file": ("image", image_bytes, content_type)},
+        )
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            body = exc.response.text[:300]
+            raise RuntimeError(f"Ideogram remix 오류 ({exc.response.status_code}): {body}") from exc
+
+        data = resp.json()
+        items = data.get("data") or []
+        if not items:
+            raise RuntimeError("Ideogram remix API가 이미지를 반환하지 않았습니다.")
+
+        image_url: str = items[0]["url"]
+
+        img_resp = client.get(image_url)
+        img_resp.raise_for_status()
+        result_bytes = img_resp.content
+
+    # 3. 결과 S3 업로드
+    output_key = f"outputs/enhanced/{_uuid.uuid4()}.png"
+    _upload_bytes_to_s3(output_key, result_bytes, "image/png")
+    logger.info("Uploaded enhanced image to %s for job %s", output_key, job["id"])
+    return output_key, prompt
 
 
 def _enhance_prompt_locally(prompt: str) -> str:
@@ -125,7 +239,7 @@ def _generate_image(job: dict) -> tuple[str, str]:
     import boto3
     from botocore.config import Config
 
-    prompt = (job.get("prompt") or "").strip()
+    prompt = _translate_to_english((job.get("prompt") or "").strip())
     if not prompt:
         raise ValueError("생성 프롬프트가 없습니다.")
 

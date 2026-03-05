@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 type JobStatus = "pending" | "processing" | "done" | "failed";
 type JobMode = "enhance" | "generate";
@@ -330,15 +331,18 @@ function GallerySection({ jobs }: { jobs: Job[] }) {
 // Main dashboard page
 // ---------------------------------------------------------------------------
 export default function DashboardPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const tab = (searchParams.get("tab") ?? "generate") as "generate" | "gallery" | "history";
+
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [uploadedKey, setUploadedKey] = useState<string | null>(null);
-  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
-
   const [prompt, setPrompt] = useState("");
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 로컬 개발: NEXT_PUBLIC_API_URL을 비워두면 상대 경로(/api/*)를 사용하며
@@ -380,100 +384,20 @@ export default function DashboardPage() {
     return () => clearTimeout(timer);
   }, [jobs, fetchJobs]);
 
-  // -------------------------------------------------------------------------
-  // Step 1: Upload file → store object_key (no job created yet)
-  // -------------------------------------------------------------------------
-  const ACCEPTED_TYPES = ["image/jpeg", "image/png", "video/mp4", "video/quicktime"];
-
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setError("지원하지 않는 파일 형식입니다. JPG, PNG, MP4, MOV 파일만 업로드할 수 있습니다.");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      return;
-    }
-    setUploadedKey(null);
-    setUploadedFilename(null);
-    setUploading(true);
-
-    try {
-      let presignRes: Response;
-      try {
-        presignRes = await fetch(`${API_URL}/api/upload/presign`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename: file.name, content_type: file.type }),
-        });
-      } catch {
-        throw new Error(apiConnErrMsg);
-      }
-      if (!presignRes.ok) {
-        const detail = await presignRes.text().catch(() => "");
-        throw new Error(`presign 요청 실패 (${presignRes.status})${detail ? `: ${detail}` : ""}`);
-      }
-      const { upload_url, object_key } = await presignRes.json();
-
-      let putRes: Response;
-      try {
-        putRes = await fetch(upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-      } catch {
-        throw new Error("스토리지에 파일을 업로드할 수 없습니다. 네트워크 상태 또는 스토리지 CORS 설정을 확인하세요.");
-      }
-      if (!putRes.ok) throw new Error(`파일 업로드 실패 (HTTP ${putRes.status}). 스토리지 서비스 상태를 확인하세요.`);
-
-      setUploadedKey(object_key);
-      setUploadedFilename(file.name);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "알 수 없는 오류");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }
+  // activeJob 완료 시 2초 후 갤러리로 이동
+  useEffect(() => {
+    if (!activeJobId) return;
+    const activeJob = jobs.find((j) => j.id === activeJobId);
+    if (activeJob?.status !== "done") return;
+    const timer = setTimeout(() => {
+      router.replace("/dashboard?tab=gallery");
+      setActiveJobId(null);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [jobs, activeJobId]);
 
   // -------------------------------------------------------------------------
-  // Step 2a: AI 보정 요청
-  // -------------------------------------------------------------------------
-  async function handleEnhance() {
-    if (!uploadedKey) {
-      setError("먼저 파일을 업로드하세요.");
-      return;
-    }
-    setError(null);
-    setSubmitting(true);
-    try {
-      let res: Response;
-      try {
-        res = await fetch(`${API_URL}/api/ai/enhance`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ object_key: uploadedKey, prompt: prompt || undefined }),
-        });
-      } catch {
-        throw new Error(apiConnErrMsg);
-      }
-      if (!res.ok) throw new Error(`AI 보정 요청 실패 (HTTP ${res.status}). 잠시 후 다시 시도하세요.`);
-      const newJob: Job = await res.json();
-      setJobs((prev) => [newJob, ...prev]);
-      setUploadedKey(null);
-      setUploadedFilename(null);
-      setPrompt("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "알 수 없는 오류");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  // -------------------------------------------------------------------------
-  // Step 2b: AI 생성 요청
+  // AI 생성 요청 (파일 첨부 시 파일 기반, 없으면 프롬프트 기반)
   // -------------------------------------------------------------------------
   async function handleGenerate() {
     if (!prompt.trim()) {
@@ -482,6 +406,65 @@ export default function DashboardPage() {
     }
     setError(null);
     setSubmitting(true);
+
+    // 파일 첨부된 경우: 업로드 후 파일 기반 요청
+    if (attachedFile) {
+      setUploading(true);
+      try {
+        let presignRes: Response;
+        try {
+          presignRes = await fetch(`${API_URL}/api/upload/presign`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: attachedFile.name, content_type: attachedFile.type }),
+          });
+        } catch {
+          throw new Error(apiConnErrMsg);
+        }
+        if (!presignRes.ok) throw new Error(`업로드 준비 실패 (${presignRes.status})`);
+        const { upload_url, object_key } = await presignRes.json();
+
+        let putRes: Response;
+        try {
+          putRes = await fetch(upload_url, {
+            method: "PUT",
+            headers: { "Content-Type": attachedFile.type },
+            body: attachedFile,
+          });
+        } catch {
+          throw new Error("파일 업로드에 실패했습니다. 네트워크 상태를 확인하세요.");
+        }
+        if (!putRes.ok) throw new Error(`파일 업로드 실패 (HTTP ${putRes.status})`);
+
+        setUploading(false);
+
+        let res: Response;
+        try {
+          res = await fetch(`${API_URL}/api/ai/enhance`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ object_key, prompt: prompt.trim() }),
+          });
+        } catch {
+          throw new Error(apiConnErrMsg);
+        }
+        if (!res.ok) throw new Error(`요청 실패 (HTTP ${res.status})`);
+        const newJob: Job = await res.json();
+        setJobs((prev) => [newJob, ...prev]);
+        setActiveJobId(newJob.id);
+        setAttachedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setPrompt("");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "알 수 없는 오류");
+      } finally {
+        setUploading(false);
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // 파일 없는 경우: 프롬프트 기반 생성
     try {
       let res: Response;
       try {
@@ -496,6 +479,7 @@ export default function DashboardPage() {
       if (!res.ok) throw new Error(`AI 생성 요청 실패 (HTTP ${res.status}). 잠시 후 다시 시도하세요.`);
       const newJob: Job = await res.json();
       setJobs((prev) => [newJob, ...prev]);
+      setActiveJobId(newJob.id);
       setPrompt("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류");
@@ -504,195 +488,208 @@ export default function DashboardPage() {
     }
   }
 
-  const generateJobs = jobs.filter((j) => j.mode === "generate");
+  const generateJobs = jobs.filter((j) => j.mode === "generate" || j.mode === "enhance");
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-12">
+    <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
 
       {/* ------------------------------------------------------------------ */}
-      {/* Hero: Prompt-first main section                                      */}
+      {/* 생성 탭                                                               */}
       {/* ------------------------------------------------------------------ */}
-      <section className="space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            무엇을 만들어 드릴까요?
-          </h1>
-          <p className="text-gray-500 text-sm">
-            프롬프트를 입력하면 AI가 이미지를 생성합니다
-          </p>
-        </div>
+      {tab === "generate" && (() => {
+        const activeJob = activeJobId ? jobs.find((j) => j.id === activeJobId) ?? null : null;
+        const isActive = activeJob && (activeJob.status === "pending" || activeJob.status === "processing");
+        const isDone = activeJob?.status === "done";
 
-        {/* Prompt textarea */}
-        <div className="relative">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate();
-            }}
-            disabled={submitting}
-            rows={5}
-            placeholder="예: 사이버펑크 도시 야경, 따뜻한 햇살이 비치는 카페 창가, 미래적인 우주선 내부…"
-            className="w-full bg-gray-900 border border-gray-800 hover:border-gray-700 focus:border-indigo-500 rounded-2xl px-6 py-5 text-base text-white placeholder-gray-600 focus:outline-none transition-colors resize-none disabled:opacity-50"
-          />
-          <span className="absolute bottom-4 right-5 text-xs text-gray-700 pointer-events-none select-none">
-            ⌘ + Enter
-          </span>
-        </div>
+        return (
+          <div className="min-h-[calc(100vh-10rem)] flex flex-col items-center justify-center gap-5 max-w-2xl mx-auto w-full">
 
-        {/* Primary CTA */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={handleGenerate}
-            disabled={submitting || !prompt.trim()}
-            title={!prompt.trim() ? "프롬프트를 입력하세요" : undefined}
-            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all px-7 py-3 rounded-xl font-semibold text-white text-sm shadow-lg shadow-indigo-900/40 active:scale-95"
-          >
-            {submitting ? "요청 중…" : "AI 생성 요청"}
-          </button>
-          <span className="text-gray-700 text-xs hidden sm:inline">프롬프트만으로 이미지를 생성합니다</span>
-        </div>
-      </section>
+            {/* 프리뷰 카드 */}
+            {activeJob && (
+              <div className="w-full rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
+                {isActive ? (
+                  <div className="aspect-video w-full animate-shimmer flex flex-col items-center justify-center gap-3">
+                    <div className="w-8 h-8 rounded-full border-2 border-indigo-500/70 border-t-transparent animate-spin" />
+                    <span className="text-xs text-gray-500">
+                      {activeJob.status === "processing" ? "이미지 생성 중…" : "대기 중…"}
+                    </span>
+                  </div>
+                ) : isDone && activeJob.output_url ? (
+                  <div className="aspect-video w-full relative animate-fade-in">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={activeJob.output_url}
+                      alt={activeJob.prompt ?? ""}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-300 line-clamp-2">{activeJob.original_prompt || activeJob.prompt}</p>
+                        <p className="text-xs text-indigo-400">갤러리로 이동 중…</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : activeJob.status === "failed" ? (
+                  <div className="aspect-video w-full flex flex-col items-center justify-center gap-2 bg-red-950/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                    <p className="text-xs text-red-500">생성 실패</p>
+                  </div>
+                ) : null}
+              </div>
+            )}
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Secondary: Image enhance section                                    */}
-      {/* ------------------------------------------------------------------ */}
-      <section className="border border-gray-800 rounded-2xl p-6 space-y-5">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-gray-300">AI 보정 요청</h2>
-            <p className="text-xs text-gray-600">
-              이미지 또는 영상을 업로드하면 AI가 화질·색감을 개선합니다
-            </p>
+            {/* 입력 패널 — textarea + 하단 툴바 */}
+            <div className={`w-full bg-gray-900 border rounded-2xl overflow-hidden transition-colors ${
+              error ? "border-red-900/60" : "border-gray-800 hover:border-gray-700 focus-within:border-indigo-500/60"
+            }`}>
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleGenerate();
+                }}
+                disabled={submitting}
+                rows={4}
+                placeholder="예: 사이버펑크 도시 야경, 따뜻한 햇살이 비치는 카페 창가…"
+                className="w-full bg-transparent px-5 pt-5 pb-3 text-base text-white placeholder-gray-600 focus:outline-none resize-none disabled:opacity-50"
+              />
+
+              {/* 하단 툴바 */}
+              <div className="flex items-center justify-between px-4 pb-4 pt-1">
+                {/* 좌: 첨부 */}
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={(e) => setAttachedFile(e.target.files?.[0] ?? null)}
+                  />
+                  {attachedFile ? (
+                    <span className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-800 px-3 py-1.5 rounded-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      <span className="font-mono truncate max-w-[140px]">{attachedFile.name}</span>
+                      <button
+                        onClick={() => { setAttachedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                        className="text-gray-600 hover:text-red-400 transition-colors ml-0.5"
+                        aria-label="첨부 취소"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={submitting}
+                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 bg-gray-800/60 hover:bg-gray-800 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      title="이미지 첨부 (AI 보정 모드)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                      </svg>
+                      이미지 첨부
+                    </button>
+                  )}
+                </div>
+
+                {/* 우: 생성 버튼 */}
+                <button
+                  onClick={handleGenerate}
+                  disabled={submitting || !prompt.trim()}
+                  title={!prompt.trim() ? "프롬프트를 입력하세요" : undefined}
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all px-5 py-2 rounded-xl font-semibold text-white text-sm shadow-lg shadow-indigo-900/40 active:scale-95"
+                >
+                  {uploading ? "업로드 중…" : submitting ? "생성 중…" : "생성하기"}
+                </button>
+              </div>
+            </div>
+
+            {/* 에러 */}
+            {error && (
+              <div className="w-full flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-900/50 rounded-xl px-4 py-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                {error}
+              </div>
+            )}
           </div>
-          <span className="text-xs text-gray-700 bg-gray-900 px-2 py-0.5 rounded-full border border-gray-800">
-            JPG · PNG · MP4 · MOV
-          </span>
-        </div>
+        );
+      })()}
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          {/* Upload trigger */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".jpg,.jpeg,.png,.mp4,.mov,image/jpeg,image/png,video/mp4,video/quicktime"
-            className="hidden"
-            onChange={handleFileSelect}
-            disabled={uploading || submitting}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading || submitting}
-            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 hover:border-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all px-5 py-2.5 rounded-xl text-sm text-gray-300 font-medium active:scale-95"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            {uploading ? "업로드 중…" : "파일 선택"}
-          </button>
+      {/* ------------------------------------------------------------------ */}
+      {/* 갤러리 탭                                                             */}
+      {/* ------------------------------------------------------------------ */}
+      {tab === "gallery" && <GallerySection jobs={generateJobs} />}
 
-          {/* Uploaded file indicator */}
-          {uploadedFilename ? (
-            <span className="flex items-center gap-1.5 text-sm text-green-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              <span className="font-mono truncate max-w-[180px]">{uploadedFilename}</span>
-            </span>
+      {/* ------------------------------------------------------------------ */}
+      {/* 작업 내역 탭                                                          */}
+      {/* ------------------------------------------------------------------ */}
+      {tab === "history" && (
+        <section className="space-y-4">
+          {jobs.length === 0 ? (
+            <div className="border border-dashed border-gray-800 rounded-2xl py-12 text-center text-gray-700 text-sm">
+              아직 작업이 없습니다
+            </div>
           ) : (
-            <span className="text-xs text-gray-700">파일을 선택하면 자동 업로드됩니다</span>
-          )}
-
-          {/* Secondary CTA */}
-          <button
-            onClick={handleEnhance}
-            disabled={submitting || !uploadedKey}
-            title={!uploadedKey ? "먼저 파일을 업로드하세요" : undefined}
-            className="sm:ml-auto flex items-center gap-2 bg-emerald-900/40 hover:bg-emerald-800/50 border border-emerald-800/60 hover:border-emerald-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all px-5 py-2.5 rounded-xl font-semibold text-emerald-300 text-sm active:scale-95"
-          >
-            {submitting ? "요청 중…" : "AI 보정 요청"}
-          </button>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Error                                                                */}
-      {/* ------------------------------------------------------------------ */}
-      {error && (
-        <div className="flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-900/50 rounded-xl px-4 py-3">
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-          </svg>
-          {error}
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Gallery: AI generate jobs                                           */}
-      {/* ------------------------------------------------------------------ */}
-      <GallerySection jobs={generateJobs} />
-
-      {/* ------------------------------------------------------------------ */}
-      {/* Job list                                                             */}
-      {/* ------------------------------------------------------------------ */}
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">작업 목록</h2>
-        {jobs.length === 0 ? (
-          <div className="border border-dashed border-gray-800 rounded-2xl py-12 text-center text-gray-700 text-sm">
-            아직 작업이 없습니다
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-xl border border-gray-800">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-900/80 text-gray-500 text-xs uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium">파일명</th>
-                  <th className="px-4 py-3 text-left font-medium">모드</th>
-                  <th className="px-4 py-3 text-left font-medium">프롬프트</th>
-                  <th className="px-4 py-3 text-left font-medium">상태</th>
-                  <th className="px-4 py-3 text-left font-medium">생성일</th>
-                  <th className="px-4 py-3 text-left font-medium">액션</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-800/60">
-                {jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-gray-900/40 transition-colors">
-                    <td className="px-4 py-3 font-mono text-gray-300">{job.filename}</td>
-                    <td className="px-4 py-3 text-gray-400">
-                      {job.mode ? MODE_LABEL[job.mode] : "—"}
-                    </td>
-                    <td className="px-4 py-3 max-w-xs truncate text-gray-500">
-                      {job.prompt ?? "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${STATUS_COLOR[job.status]}`}>
-                        {STATUS_LABEL[job.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600 text-xs">
-                      {new Date(job.created_at).toLocaleString("ko-KR")}
-                    </td>
-                    <td className="px-4 py-3">
-                      {job.status === "done" && job.output_url ? (
-                        <a
-                          href={job.output_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-400 hover:text-indigo-300 hover:underline text-xs transition-colors"
-                        >
-                          다운로드
-                        </a>
-                      ) : (
-                        <span className="text-gray-700 text-xs">—</span>
-                      )}
-                    </td>
+            <div className="overflow-x-auto rounded-xl border border-gray-800">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-900/80 text-gray-500 text-xs uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">파일명</th>
+                    <th className="px-4 py-3 text-left font-medium">모드</th>
+                    <th className="px-4 py-3 text-left font-medium">프롬프트</th>
+                    <th className="px-4 py-3 text-left font-medium">상태</th>
+                    <th className="px-4 py-3 text-left font-medium">생성일</th>
+                    <th className="px-4 py-3 text-left font-medium">액션</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody className="divide-y divide-gray-800/60">
+                  {jobs.map((job) => (
+                    <tr key={job.id} className="hover:bg-gray-900/40 transition-colors">
+                      <td className="px-4 py-3 font-mono text-gray-300">{job.filename}</td>
+                      <td className="px-4 py-3 text-gray-400">
+                        {job.mode ? MODE_LABEL[job.mode] : "—"}
+                      </td>
+                      <td className="px-4 py-3 max-w-xs truncate text-gray-500">
+                        {job.prompt ?? "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${STATUS_COLOR[job.status]}`}>
+                          {STATUS_LABEL[job.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {new Date(job.created_at).toLocaleString("ko-KR")}
+                      </td>
+                      <td className="px-4 py-3">
+                        {job.status === "done" && job.output_url ? (
+                          <a
+                            href={job.output_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-400 hover:text-indigo-300 hover:underline text-xs transition-colors"
+                          >
+                            다운로드
+                          </a>
+                        ) : (
+                          <span className="text-gray-700 text-xs">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
