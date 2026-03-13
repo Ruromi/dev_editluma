@@ -27,6 +27,22 @@ def _is_missing_rpc_function(exc: RpcError, function_name: str) -> bool:
     return function_name in message or function_name in details
 
 
+def _is_legacy_user_credits_balance_error(exc: RpcError) -> bool:
+    if not isinstance(exc.payload, dict):
+        return False
+
+    code = str(exc.payload.get("code") or "")
+    message = str(exc.payload.get("message") or "")
+    details = str(exc.payload.get("details") or "")
+    combined = f"{message} {details}".lower()
+
+    return (
+        code == "42703"
+        and "user_credits" in combined
+        and "balance" in combined
+    )
+
+
 def _extract_balance(row: dict[str, Any] | None) -> int | None:
     if not row:
         return None
@@ -390,10 +406,13 @@ async def get_or_create_credit_balance(user_id: str) -> int:
         )
         return int(payload["balance"])
     except RpcError as exc:
-        if not _is_missing_rpc_function(exc, "ensure_user_credits"):
+        if not (
+            _is_missing_rpc_function(exc, "ensure_user_credits")
+            or _is_legacy_user_credits_balance_error(exc)
+        ):
             logger.exception("ensure_user_credits RPC failed for user %s", user_id)
             raise HTTPException(status_code=503, detail=_CREDIT_BALANCE_ERROR) from exc
-        logger.warning("Falling back to direct credit balance query: %s", exc)
+        logger.warning("Falling back to direct credit balance query after RPC error: %s", exc)
         try:
             return _direct_get_or_create_credit_balance(user_id)
         except HTTPException:
@@ -438,7 +457,10 @@ async def charge_and_create_job(
                 status_code=402,
                 detail=f"크레딧이 부족합니다. 이미지 1장당 {settings.image_request_credit_cost} 크레딧이 필요합니다.",
             ) from exc
-        if not _is_missing_rpc_function(exc, "create_credit_charged_job_with_ledger"):
+        if not (
+            _is_missing_rpc_function(exc, "create_credit_charged_job_with_ledger")
+            or _is_legacy_user_credits_balance_error(exc)
+        ):
             logger.exception("create_credit_charged_job_with_ledger RPC failed for user %s", user.id)
             raise HTTPException(status_code=503, detail=_CREDIT_PROCESSING_ERROR) from exc
         logger.warning("Falling back to direct credit charge flow after RPC error: %s", exc)
@@ -489,7 +511,10 @@ async def record_credit_ledger_entry(
         )
         return payload
     except RpcError as exc:
-        if not _is_missing_rpc_function(exc, "record_credit_ledger_entry"):
+        if not (
+            _is_missing_rpc_function(exc, "record_credit_ledger_entry")
+            or _is_legacy_user_credits_balance_error(exc)
+        ):
             logger.exception("record_credit_ledger_entry RPC failed for user %s", user_id)
             raise HTTPException(status_code=503, detail=_CREDIT_LEDGER_ERROR) from exc
         logger.warning("Falling back to direct credit ledger flow: %s", exc)
