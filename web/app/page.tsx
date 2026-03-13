@@ -5,11 +5,13 @@ import LandingFooter from "@/components/landing/LandingFooter";
 
 export default function Home() {
   return (
-    <div className="flex flex-col gap-28 pb-28">
-      <HeroSection />
-      <FeaturesSection />
-      <GallerySection />
+    <>
+      <div className="flex flex-col gap-28 pb-28">
+        <HeroSection />
+        <FeaturesSection />
+        <GallerySection />
+      </div>
       <LandingFooter />
-    </div>
+    </>
   );
 }

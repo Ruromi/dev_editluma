@@ -1,21 +1,25 @@
 import type { NextConfig } from "next";
 
-// On Vercel, vercel.json routes handle /api/* → Python serverless.
-// Locally, Next.js rewrites proxy /api/* → FastAPI dev server.
-const isVercel = !!process.env.VERCEL;
-const INTERNAL_API_URL = process.env.INTERNAL_API_URL ?? "http://localhost:8010";
+const NEXT_PUBLIC_API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+const INTERNAL_API_URL = (process.env.INTERNAL_API_URL ?? "").replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
-  ...(!isVercel && {
-    async rewrites() {
-      return [
-        {
-          source: "/api/:path*",
-          destination: `${INTERNAL_API_URL}/api/:path*`,
-        },
-      ];
-    },
-  }),
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
+  env: {
+    NEXT_PUBLIC_API_URL,
+  },
+  async rewrites() {
+    if (!INTERNAL_API_URL || NEXT_PUBLIC_API_URL) {
+      return [];
+    }
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${INTERNAL_API_URL}/api/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

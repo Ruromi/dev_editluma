@@ -26,8 +26,8 @@ export default function DashboardNav() {
             onClick={() => router.replace(`/dashboard?tab=${t.id}`)}
             className={`text-sm font-medium transition-colors relative pb-0.5 ${
               tab === t.id
-                ? "text-white"
-                : "text-gray-500 hover:text-gray-300"
+                ? "text-gray-900"
+                : "text-gray-500 hover:text-gray-400"
             }`}
           >
             {t.label}
@@ -39,7 +39,7 @@ export default function DashboardNav() {
           <Link
             key={t.id}
             href={`/dashboard?tab=${t.id}`}
-            className="text-sm font-medium transition-colors relative pb-0.5 text-gray-500 hover:text-gray-300"
+            className="text-sm font-medium transition-colors relative pb-0.5 text-gray-500 hover:text-gray-400"
           >
             {t.label}
           </Link>
@@ -50,8 +50,8 @@ export default function DashboardNav() {
         href="/pricing"
         className={`text-sm font-medium transition-colors relative pb-0.5 ${
           isPricing
-            ? "text-white"
-            : "text-gray-500 hover:text-gray-300"
+            ? "text-gray-900"
+            : "text-gray-500 hover:text-gray-400"
         }`}
       >
         요금제

@@ -43,7 +43,7 @@ export default function GallerySection() {
   return (
     <section className="mx-auto max-w-6xl px-6">
       <div className="mb-12 text-center">
-        <h2 className="text-2xl font-bold text-white sm:text-3xl">결과물 미리보기</h2>
+        <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">결과물 미리보기</h2>
         <p className="mt-3 text-sm text-gray-500">
           생성과 보정 결과를 한 번에 둘러볼 수 있습니다
         </p>
@@ -53,9 +53,9 @@ export default function GallerySection() {
         {gallery.map((g) => (
           <div
             key={g.src}
-            className="group overflow-hidden rounded-2xl border border-gray-800 bg-gray-900/60 transition-all duration-300 hover:border-gray-700 hover:shadow-xl hover:shadow-indigo-500/5"
+            className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-900/60 transition-all duration-300 hover:border-gray-300 hover:shadow-xl hover:shadow-indigo-500/5"
           >
-            <div className="relative aspect-square w-full overflow-hidden bg-gray-950">
+            <div className="relative aspect-square w-full overflow-hidden bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={g.src}
@@ -67,10 +67,10 @@ export default function GallerySection() {
               />
             </div>
             <div className="space-y-2 px-5 py-4">
-              <span className="inline-flex rounded-full border border-gray-800 bg-gray-950 px-2.5 py-1 text-[11px] font-medium text-gray-400">
+              <span className="inline-flex rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-medium text-gray-500">
                 {g.label}
               </span>
-              <p className="text-sm leading-relaxed text-gray-300">{g.summary}</p>
+              <p className="text-sm leading-relaxed text-gray-600">{g.summary}</p>
             </div>
           </div>
         ))}

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # Supabase
     supabase_url: str
     supabase_service_role_key: str  # server-only
-    supabase_schema: str = "dev"
+    supabase_schema: str = "public"
 
     # S3-compatible storage
     storage_endpoint_url: str = ""
@@ -67,8 +67,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_production_settings(self) -> "Settings":
-        default_schema = "public" if self.is_production else "dev"
-        self.supabase_schema = (self.supabase_schema or default_schema).strip().lower() or default_schema
+        self.supabase_schema = (self.supabase_schema or "public").strip().lower() or "public"
         if self.is_production and self.polar_server != "production":
             raise ValueError("POLAR_SERVER must be 'production' when ENVIRONMENT=production")
         if self.is_production and self.supabase_schema != "public":

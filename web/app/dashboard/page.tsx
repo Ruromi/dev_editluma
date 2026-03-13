@@ -50,10 +50,10 @@ const STATUS_LABEL: Record<JobStatus, string> = {
 };
 
 const STATUS_COLOR: Record<JobStatus, string> = {
-  pending: "text-yellow-400 bg-yellow-400/10",
-  processing: "text-blue-400 bg-blue-400/10",
-  done: "text-green-400 bg-green-400/10",
-  failed: "text-red-400 bg-red-400/10",
+  pending: "text-yellow-700 bg-yellow-400/10",
+  processing: "text-blue-600 bg-blue-400/10",
+  done: "text-green-600 bg-green-400/10",
+  failed: "text-red-600 bg-red-400/10",
 };
 
 const MODE_LABEL: Record<JobMode, string> = {
@@ -94,11 +94,11 @@ function PixelAgent({ status }: { status: "pending" | "processing" }) {
 
         {/* Frame border */}
         <div
-          className="absolute inset-0 rounded-xl border-2 border-gray-700/50 overflow-hidden"
+          className="absolute inset-0 rounded-xl border-2 border-gray-300/50 overflow-hidden"
           style={{ animation: isProcessing ? `mosaic-glow ${dur} ease-in-out infinite` : "none" }}
         >
           {/* 3×3 mosaic grid */}
-          <div className="grid grid-cols-3 grid-rows-3 w-full h-full gap-[2px] bg-gray-900/80 p-[2px]">
+          <div className="grid grid-cols-3 grid-rows-3 w-full h-full gap-[2px] bg-gray-50 p-[2px]">
             {Array.from({ length: 9 }).map((_, i) => {
               const row = Math.floor(i / 3);
               const col = i % 3;
@@ -107,7 +107,7 @@ function PixelAgent({ status }: { status: "pending" | "processing" }) {
                   key={i}
                   className="rounded-sm relative overflow-hidden"
                   style={{
-                    background: isProcessing ? MOSAIC_COLORS[row][col] : "#1f2937",
+                    background: isProcessing ? MOSAIC_COLORS[row][col] : "#e5e7eb",
                     animation: isProcessing
                       ? `mosaic-piece-${i} ${dur} cubic-bezier(0.34, 1.56, 0.64, 1) infinite`
                       : "none",
@@ -146,7 +146,7 @@ function PixelAgent({ status }: { status: "pending" | "processing" }) {
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="text-gray-600"
+            className="text-gray-400"
             width={32} height={32}
             fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}
           >
@@ -206,9 +206,9 @@ function PixelAgent({ status }: { status: "pending" | "processing" }) {
 // ---------------------------------------------------------------------------
 function SkeletonCard({ job }: { job: Job }) {
   return (
-    <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900">
+    <div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-50">
       {/* Pixel agent area */}
-      <div className="aspect-square relative overflow-hidden bg-gray-950/80">
+      <div className="aspect-square relative overflow-hidden bg-white/80">
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <PixelAgent status={job.status as "pending" | "processing"} />
         </div>
@@ -216,11 +216,11 @@ function SkeletonCard({ job }: { job: Job }) {
       {/* Meta */}
       <div className="p-3 space-y-2">
         {job.prompt ? (
-          <p className="text-xs text-gray-600 truncate">{job.prompt}</p>
+          <p className="text-xs text-gray-400 truncate">{job.prompt}</p>
         ) : (
-          <div className="h-2.5 bg-gray-800 rounded animate-pulse w-3/4" />
+          <div className="h-2.5 bg-gray-100 rounded animate-pulse w-3/4" />
         )}
-        <div className="h-2 bg-gray-800/60 rounded animate-pulse w-2/5" />
+        <div className="h-2 bg-gray-100 rounded animate-pulse w-2/5" />
       </div>
     </div>
   );
@@ -239,7 +239,7 @@ function ImageDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="bg-gray-950 border border-gray-800 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
+        className="bg-white border border-gray-200 rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Image */}
@@ -251,10 +251,10 @@ function ImageDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
             className="w-full rounded-t-2xl object-cover"
           />
         ) : (
-          <div className="aspect-square flex items-center justify-center bg-gray-900 rounded-t-2xl">
+          <div className="aspect-square flex items-center justify-center bg-gray-50 rounded-t-2xl">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-12 h-12 text-gray-700"
+              className="w-12 h-12 text-gray-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -273,7 +273,7 @@ function ImageDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
         <div className="p-5 space-y-4">
           {/* Header row */}
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-600">
+            <span className="text-xs text-gray-400">
               {new Date(job.created_at).toLocaleString("ko-KR")}
             </span>
             <div className="flex items-center gap-3">
@@ -282,14 +282,14 @@ function ImageDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
                   href={job.output_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline transition-colors"
+                  className="text-xs text-indigo-600 hover:text-indigo-500 hover:underline transition-colors"
                 >
                   다운로드
                 </a>
               )}
               <button
                 onClick={onClose}
-                className="text-gray-600 hover:text-gray-300 transition-colors"
+                className="text-gray-400 hover:text-gray-400 transition-colors"
                 aria-label="닫기"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -304,17 +304,17 @@ function ImageDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
               입력 프롬프트
             </h3>
-            <p className="text-sm text-gray-300 leading-relaxed">
+            <p className="text-sm text-gray-400 leading-relaxed">
               {originalPrompt || "—"}
             </p>
           </div>
 
           {/* AI 보정 프롬프트 */}
           <div className="space-y-1.5">
-            <h3 className="text-xs font-semibold text-indigo-400/70 uppercase tracking-wider">
+            <h3 className="text-xs font-semibold text-indigo-500 uppercase tracking-wider">
               AI 보정 프롬프트
             </h3>
-            <p className="text-sm text-indigo-200/70 leading-relaxed">
+            <p className="text-sm text-indigo-600 leading-relaxed">
               {enhancedPrompt || "—"}
             </p>
           </div>
@@ -333,18 +333,18 @@ function GalleryCard({ job, onClick }: { job: Job; onClick: () => void }) {
 
   return (
     <div
-      className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900 group cursor-pointer hover:border-gray-700 transition-colors"
+      className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-50 group cursor-pointer hover:border-gray-300 transition-colors"
       onClick={onClick}
     >
       {/* Thumbnail */}
       <div
         className={`aspect-square relative overflow-hidden flex items-center justify-center ${
           isDone && !job.output_url
-            ? "bg-gradient-to-br from-indigo-950/80 to-gray-900"
+            ? "bg-gradient-to-br from-indigo-50 to-gray-900"
             : !isDone
-            ? "bg-gradient-to-br from-red-950/40 to-gray-900"
+            ? "bg-gradient-to-br from-red-50 to-gray-900"
             : imgError
-            ? "bg-gradient-to-br from-indigo-950/80 to-gray-900"
+            ? "bg-gradient-to-br from-indigo-50 to-gray-900"
             : ""
         }`}
       >
@@ -360,7 +360,7 @@ function GalleryCard({ job, onClick }: { job: Job; onClick: () => void }) {
           <div className="flex flex-col items-center gap-1.5">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-10 h-10 text-indigo-800/60"
+              className="w-10 h-10 text-indigo-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -373,13 +373,13 @@ function GalleryCard({ job, onClick }: { job: Job; onClick: () => void }) {
               />
             </svg>
             {imgError && (
-              <span className="text-xs text-indigo-800/60">이미지 없음</span>
+              <span className="text-xs text-indigo-400">이미지 없음</span>
             )}
           </div>
         ) : (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="w-8 h-8 text-red-800/60"
+            className="w-8 h-8 text-red-600"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -396,8 +396,8 @@ function GalleryCard({ job, onClick }: { job: Job; onClick: () => void }) {
         <span
           className={`absolute top-2 right-2 px-2 py-0.5 text-xs rounded-full border font-medium ${
             isDone
-              ? "bg-green-900/60 text-green-300 border-green-800/50"
-              : "bg-red-900/60 text-red-300 border-red-800/50"
+              ? "bg-green-50 text-green-600 border-green-300"
+              : "bg-red-50 text-red-600 border-red-300"
           }`}
         >
           {isDone ? "완료" : "실패"}
@@ -405,10 +405,10 @@ function GalleryCard({ job, onClick }: { job: Job; onClick: () => void }) {
       </div>
       {/* Meta */}
       <div className="p-3 space-y-2">
-        <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed min-h-[2.25rem]">
+        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed min-h-[2.25rem]">
           {job.original_prompt || job.prompt || "—"}
         </p>
-        <p className="text-xs text-gray-700">
+        <p className="text-xs text-gray-500">
           {new Date(job.created_at).toLocaleString("ko-KR")}
         </p>
       </div>
@@ -432,11 +432,11 @@ function GallerySection({ jobs }: { jobs: Job[] }) {
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-3">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
           생성 갤러리
         </h2>
         {activeJobs.length > 0 && (
-          <span className="flex items-center gap-1.5 text-xs text-blue-400">
+          <span className="flex items-center gap-1.5 text-xs text-blue-600">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
             {activeJobs.length}개 생성 중
           </span>
@@ -444,10 +444,10 @@ function GallerySection({ jobs }: { jobs: Job[] }) {
       </div>
 
       {jobs.length === 0 ? (
-        <div className="border border-dashed border-gray-800 rounded-2xl py-14 flex flex-col items-center gap-2 text-center">
+        <div className="border border-dashed border-gray-200 rounded-2xl py-14 flex flex-col items-center gap-2 text-center">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="w-8 h-8 text-gray-700 mb-1"
+            className="w-8 h-8 text-gray-500 mb-1"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -459,7 +459,7 @@ function GallerySection({ jobs }: { jobs: Job[] }) {
               d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
             />
           </svg>
-          <p className="text-gray-700 text-sm">아직 생성된 이미지가 없습니다</p>
+          <p className="text-gray-500 text-sm">아직 생성된 이미지가 없습니다</p>
           <p className="text-gray-800 text-xs">
             프롬프트를 입력하여 첫 번째 이미지를 만들어 보세요
           </p>
@@ -666,13 +666,19 @@ function DashboardPageContent() {
         try {
           putRes = await fetch(upload_url, {
             method: "PUT",
-            headers: { "Content-Type": attachedFile.type },
             body: attachedFile,
           });
         } catch {
           throw new Error("파일 업로드에 실패했습니다. 네트워크 상태를 확인하세요.");
         }
-        if (!putRes.ok) throw new Error(`파일 업로드 실패 (HTTP ${putRes.status})`);
+        if (!putRes.ok) {
+          const uploadErrorText = (await putRes.text()).trim().slice(0, 240);
+          throw new Error(
+            uploadErrorText
+              ? `파일 업로드 실패 (HTTP ${putRes.status}): ${uploadErrorText}`
+              : `파일 업로드 실패 (HTTP ${putRes.status})`
+          );
+        }
 
         setUploading(false);
 
@@ -755,37 +761,44 @@ function DashboardPageContent() {
       {/* 생성 탭                                                               */}
       {/* ------------------------------------------------------------------ */}
       {tab === "generate" && (() => {
-        const activeJob = activeJobId ? jobs.find((j) => j.id === activeJobId) ?? null : null;
-        const isActive = activeJob && (activeJob.status === "pending" || activeJob.status === "processing");
-        const isDone = activeJob?.status === "done";
+        const previewJob = activeJobId ? jobs.find((j) => j.id === activeJobId) ?? null : null;
+        const showLocalPreview = submitting && !previewJob;
+        const localPreviewStatus: "pending" | "processing" = uploading ? "pending" : "processing";
+        const previewStatus = previewJob?.status ?? null;
+        const isActive = previewStatus === "pending" || previewStatus === "processing";
+        const isDone = previewStatus === "done";
         const hasEnoughCredits = creditBalance === null || creditBalance >= creditCost;
 
         return (
           <div className="min-h-[calc(100vh-10rem)] flex flex-col items-center justify-center gap-5 max-w-2xl mx-auto w-full">
             {/* 프리뷰 카드 */}
-            {activeJob && (
-              <div className="w-full rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
-                {isActive ? (
-                  <div className="aspect-square w-full bg-gray-950/80 flex flex-col items-center justify-center">
-                    <PixelAgent status={activeJob.status as "pending" | "processing"} />
+            {(previewJob || showLocalPreview) && (
+              <div className="w-full rounded-2xl overflow-hidden border border-gray-200 shadow-2xl">
+                {showLocalPreview ? (
+                  <div className="aspect-square w-full bg-white/80 flex flex-col items-center justify-center">
+                    <PixelAgent status={localPreviewStatus} />
                   </div>
-                ) : isDone && activeJob.output_url ? (
+                ) : previewJob && isActive ? (
+                  <div className="aspect-square w-full bg-white/80 flex flex-col items-center justify-center">
+                    <PixelAgent status={previewJob.status as "pending" | "processing"} />
+                  </div>
+                ) : previewJob && isDone && previewJob.output_url ? (
                   <div className="aspect-square w-full relative animate-fade-in">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={activeJob.output_url}
-                      alt={activeJob.prompt ?? ""}
+                      src={previewJob.output_url}
+                      alt={previewJob.prompt ?? ""}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
                       <div className="space-y-1">
-                        <p className="text-xs text-gray-300 line-clamp-2">{activeJob.original_prompt || activeJob.prompt}</p>
-                        <p className="text-xs text-indigo-400">갤러리로 이동 중…</p>
+                        <p className="text-xs text-gray-400 line-clamp-2">{previewJob.original_prompt || previewJob.prompt}</p>
+                        <p className="text-xs text-indigo-600">갤러리로 이동 중…</p>
                       </div>
                     </div>
                   </div>
-                ) : activeJob.status === "failed" ? (
-                  <div className="aspect-square w-full flex flex-col items-center justify-center gap-2 bg-red-950/20">
+                ) : previewJob && previewStatus === "failed" ? (
+                  <div className="aspect-square w-full flex flex-col items-center justify-center gap-2 bg-red-50">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                     </svg>
@@ -796,8 +809,8 @@ function DashboardPageContent() {
             )}
 
             {/* 입력 패널 — textarea + 하단 툴바 */}
-            <div className={`w-full bg-gray-900 border rounded-2xl overflow-hidden transition-colors ${
-              error ? "border-red-900/60" : "border-gray-800 hover:border-gray-700 focus-within:border-indigo-500/60"
+            <div className={`w-full bg-gray-50 border rounded-2xl overflow-hidden transition-colors ${
+              error ? "border-red-900/60" : "border-gray-200 hover:border-gray-300 focus-within:border-indigo-500/60"
             }`}>
               <textarea
                 value={prompt}
@@ -808,7 +821,7 @@ function DashboardPageContent() {
                 disabled={submitting}
                 rows={4}
                 placeholder="예: 사이버펑크 도시 야경, 따뜻한 햇살이 비치는 카페 창가…"
-                className="w-full bg-transparent px-5 pt-5 pb-3 text-base text-white placeholder-gray-600 focus:outline-none resize-none disabled:opacity-50"
+                className="w-full bg-transparent px-5 pt-5 pb-3 text-base text-gray-900 placeholder-gray-400 focus:outline-none resize-none disabled:opacity-50"
               />
 
               {/* 하단 툴바 */}
@@ -823,14 +836,14 @@ function DashboardPageContent() {
                     onChange={(e) => setAttachedFile(e.target.files?.[0] ?? null)}
                   />
                   {attachedFile ? (
-                    <span className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-800 px-3 py-1.5 rounded-lg">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                       </svg>
                       <span className="font-mono truncate max-w-[140px]">{attachedFile.name}</span>
                       <button
                         onClick={() => { setAttachedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                        className="text-gray-600 hover:text-red-400 transition-colors ml-0.5"
+                        className="text-gray-400 hover:text-red-600 transition-colors ml-0.5"
                         aria-label="첨부 취소"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -842,7 +855,7 @@ function DashboardPageContent() {
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       disabled={submitting}
-                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 bg-gray-800/60 hover:bg-gray-800 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-400 bg-gray-100 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                       title="이미지 첨부 (AI 보정 모드)"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -864,7 +877,7 @@ function DashboardPageContent() {
                       ? `크레딧이 부족합니다. 클릭하면 요금제 페이지로 이동합니다`
                       : undefined
                   }
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all px-5 py-2 rounded-xl font-semibold text-white text-sm shadow-lg shadow-indigo-900/40 active:scale-95"
+                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all px-5 py-2 rounded-xl font-semibold text-gray-900 text-sm shadow-lg shadow-indigo-900/40 active:scale-95"
                 >
                   {uploading ? "업로드 중…" : submitting ? "생성 중…" : "생성하기"}
                 </button>
@@ -873,7 +886,7 @@ function DashboardPageContent() {
 
             {/* 에러 */}
             {error && (
-              <div className="w-full flex items-center gap-2 text-red-400 text-sm bg-red-950/30 border border-red-900/50 rounded-xl px-4 py-3">
+              <div className="w-full flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-900/50 rounded-xl px-4 py-3">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                 </svg>
@@ -895,13 +908,13 @@ function DashboardPageContent() {
       {tab === "history" && (
         <section className="space-y-4">
           {jobs.length === 0 ? (
-            <div className="border border-dashed border-gray-800 rounded-2xl py-12 text-center text-gray-700 text-sm">
+            <div className="border border-dashed border-gray-200 rounded-2xl py-12 text-center text-gray-500 text-sm">
               아직 작업이 없습니다
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-gray-800">
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
               <table className="w-full text-sm">
-                <thead className="bg-gray-900/80 text-gray-500 text-xs uppercase tracking-wider">
+                <thead className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3 text-left font-medium">파일명</th>
                     <th className="px-4 py-3 text-left font-medium">모드</th>
@@ -911,11 +924,11 @@ function DashboardPageContent() {
                     <th className="px-4 py-3 text-left font-medium">액션</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/60">
+                <tbody className="divide-y divide-gray-200">
                   {jobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-gray-900/40 transition-colors">
-                      <td className="px-4 py-3 font-mono text-gray-300">{job.filename}</td>
-                      <td className="px-4 py-3 text-gray-400">
+                    <tr key={job.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-mono text-gray-400">{job.filename}</td>
+                      <td className="px-4 py-3 text-gray-500">
                         {job.mode ? MODE_LABEL[job.mode] : "—"}
                       </td>
                       <td className="px-4 py-3 max-w-xs truncate text-gray-500">
@@ -926,7 +939,7 @@ function DashboardPageContent() {
                           {STATUS_LABEL[job.status]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 text-xs">
+                      <td className="px-4 py-3 text-gray-400 text-xs">
                         {new Date(job.created_at).toLocaleString("ko-KR")}
                       </td>
                       <td className="px-4 py-3">
@@ -935,12 +948,12 @@ function DashboardPageContent() {
                             href={job.output_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-400 hover:text-indigo-300 hover:underline text-xs transition-colors"
+                            className="text-indigo-600 hover:text-indigo-500 hover:underline text-xs transition-colors"
                           >
                             다운로드
                           </a>
                         ) : (
-                          <span className="text-gray-700 text-xs">—</span>
+                          <span className="text-gray-500 text-xs">—</span>
                         )}
                       </td>
                     </tr>
@@ -958,7 +971,7 @@ function DashboardPageContent() {
 function DashboardPageFallback() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-8">
-      <div className="border border-gray-800 rounded-2xl bg-gray-900/40 p-8 text-sm text-gray-500">
+      <div className="border border-gray-200 rounded-2xl bg-gray-50 p-8 text-sm text-gray-500">
         대시보드를 불러오는 중입니다…
       </div>
     </div>

@@ -123,7 +123,7 @@ export default function UserMenuPopover({
         }}
         aria-expanded={isOpen}
         aria-haspopup="dialog"
-        className="group inline-flex items-center gap-2 rounded-full border border-gray-800 bg-gray-900/80 px-2 py-1.5 text-left transition-colors hover:border-gray-700 hover:bg-gray-900"
+        className="group inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-2 py-1.5 text-left transition-colors hover:border-gray-300 hover:bg-gray-50"
       >
         {avatarUrl ? (
           <img
@@ -133,23 +133,23 @@ export default function UserMenuPopover({
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-gray-900">
             {initial}
           </div>
         )}
         <div className="hidden min-w-0 sm:block">
-          <p className="max-w-[96px] truncate text-sm text-gray-200">{displayName}</p>
+          <p className="max-w-[96px] truncate text-sm text-gray-500">{displayName}</p>
           <p className="text-[11px] uppercase tracking-[0.14em] text-gray-500">
             {typeof creditBalance === "number" ? `${creditBalance} credits` : "Profile"}
           </p>
         </div>
-        <div className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] font-semibold text-indigo-200 sm:hidden">
+        <div className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] font-semibold text-indigo-600 sm:hidden">
           {typeof creditBalance === "number" ? creditBalance : "—"}
         </div>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[19rem] rounded-2xl border border-gray-800 bg-gray-950/95 p-4 shadow-2xl shadow-black/40 backdrop-blur">
+        <div className="absolute right-0 top-[calc(100%+0.75rem)] z-50 w-[19rem] rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-2xl shadow-black/40 backdrop-blur">
           <div className="flex items-center gap-3">
             {avatarUrl ? (
               <img
@@ -159,20 +159,20 @@ export default function UserMenuPopover({
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-white">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-indigo-600 text-sm font-semibold text-gray-900">
                 {initial}
               </div>
             )}
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-white">{displayName}</p>
+              <p className="truncate text-sm font-medium text-gray-900">{displayName}</p>
               <p className="truncate text-xs text-gray-500">{email ?? "로그인된 사용자"}</p>
             </div>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-gray-800 bg-gray-900/80 p-4">
+          <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
             <div>
               <p className="text-[11px] uppercase tracking-[0.16em] text-gray-500">Credits</p>
-              <p className="mt-2 text-3xl font-semibold text-white">
+              <p className="mt-2 text-3xl font-semibold text-gray-900">
                 {typeof creditBalance === "number" ? creditBalance : "—"}
               </p>
             </div>
@@ -183,14 +183,14 @@ export default function UserMenuPopover({
               <p className="mt-3 text-xs text-gray-500">크레딧 정보를 새로고침 중입니다.</p>
             )}
             {creditError && (
-              <p className="mt-3 text-xs text-red-400">{creditError}</p>
+              <p className="mt-3 text-xs text-red-600">{creditError}</p>
             )}
           </div>
 
           <Link
             href="/pricing"
             onClick={() => setIsOpen(false)}
-            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-medium text-gray-900 transition-colors hover:bg-indigo-500"
           >
             크레딧 충전하기
           </Link>
@@ -204,7 +204,7 @@ export default function UserMenuPopover({
           >
             <button
               type="submit"
-              className="w-full rounded-xl border border-gray-800 px-3 py-2 text-sm font-medium text-gray-300 transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-200"
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-400 transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-600"
             >
               로그아웃
             </button>

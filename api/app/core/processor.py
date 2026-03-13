@@ -1,5 +1,6 @@
 """Synchronous image processing logic (Celery 없이 FastAPI에서 직접 실행)."""
 import logging
+import mimetypes
 import os
 import re
 import uuid as _uuid
@@ -9,6 +10,13 @@ import httpx
 from botocore.config import Config
 
 logger = logging.getLogger(__name__)
+
+
+def _guess_image_content_type(object_key: str, fallback: str = "image/jpeg") -> str:
+    guessed, _ = mimetypes.guess_type(object_key)
+    if guessed and guessed.startswith("image/"):
+        return guessed
+    return fallback
 
 
 def _groq_api_key() -> str:
@@ -28,37 +36,117 @@ def _ideogram_timeout_seconds() -> float:
     return max(timeout_ms / 1000, 1)
 
 
-def translate_to_english(prompt: str) -> str:
-    """한국어 포함 프롬프트를 영어로 번역. 영어면 그대로 반환."""
-    if not re.search(r"[\uac00-\ud7a3]", prompt):
-        return prompt
+def _contains_korean(text: str) -> bool:
+    return bool(re.search(r"[\uac00-\ud7a3]", text))
 
+
+def _call_groq_text(*, system_prompt: str, user_prompt: str, temperature: float = 0.2, max_tokens: int = 300) -> str | None:
     api_key = _groq_api_key()
     if not api_key:
-        logger.warning("GROQ_API_KEY not set — using original prompt")
-        return prompt
+        return None
 
     from groq import Groq
+
     client = Groq(api_key=api_key)
     resp = client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a prompt translator for an AI image generation service. "
-                    "Translate the user's prompt to English. "
-                    "Output only the translated prompt, nothing else."
-                ),
-            },
-            {"role": "user", "content": prompt},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ],
-        temperature=0.3,
+        temperature=temperature,
+        max_tokens=max_tokens,
+    )
+    content = resp.choices[0].message.content or ""
+    text = content.strip()
+    return " ".join(text.split()) if text else None
+
+
+def translate_to_english(prompt: str) -> str:
+    """한국어 포함 프롬프트를 영어로 번역. 영어면 그대로 반환."""
+    if not _contains_korean(prompt):
+        return prompt
+
+    translated = _call_groq_text(
+        system_prompt=(
+            "You translate image-generation prompts into English. "
+            "Preserve every subject, action, attribute, relationship, and scene detail exactly. "
+            "Do not add commentary. Output only the translated prompt."
+        ),
+        user_prompt=prompt,
+        temperature=0.1,
         max_tokens=300,
     )
-    translated = resp.choices[0].message.content.strip()
+    if not translated:
+        logger.warning("GROQ_API_KEY not set — using original prompt")
+        return prompt
     logger.info("Translated prompt: %r → %r", prompt, translated)
     return translated
+
+
+def _with_generation_guards(prompt: str) -> str:
+    normalized = " ".join(prompt.split())
+    if not normalized:
+        return normalized
+
+    extra_clauses: list[str] = []
+    lower = normalized.lower()
+
+    if not any(
+        token in lower
+        for token in (
+            "full body",
+            "full-body",
+            "wide shot",
+            "medium-wide",
+            "all visible",
+            "both visible",
+            "fully visible in frame",
+            "two subjects",
+        )
+    ):
+        extra_clauses.append("medium-wide composition with all main subjects fully visible in frame")
+
+    if any(token in lower for token in ("outer space", "space", "universe", "galaxy", "cosmos")) and not any(
+        token in lower for token in ("spacesuit", "astronaut", "magical", "fantasy", "angel", "wings")
+    ):
+        extra_clauses.append("realistic outer-space details with the human subject wearing a sleek astronaut suit")
+
+    if not extra_clauses:
+        return normalized
+
+    return f"{normalized}. {'; '.join(extra_clauses)}."
+
+
+def rewrite_for_image_generation(prompt: str) -> str:
+    """사용자 프롬프트를 이미지 생성에 더 적합한 영문 프롬프트로 보정."""
+    raw_prompt = (prompt or "").strip()
+    if not raw_prompt:
+        return raw_prompt
+
+    rewritten = _call_groq_text(
+        system_prompt=(
+            "You rewrite user prompts into faithful English prompts for an image generation model. "
+            "Preserve every concrete subject, count, action, relationship, attribute, and setting. "
+            "Never drop or replace a primary subject. "
+            "If there are multiple main subjects, make it explicit that all of them are clearly visible in frame. "
+            "Prefer a medium-wide or wide composition when multiple subjects are involved to avoid close-up crops. "
+            "If a realistic outer-space setting is implied and no fantasy style is specified, include an appropriate spacesuit or astronaut gear for the human subject. "
+            "Keep the prompt concise but specific. Output only one English prompt."
+        ),
+        user_prompt=raw_prompt,
+        temperature=0.15,
+        max_tokens=360,
+    )
+
+    if rewritten:
+        logger.info("Rewritten generation prompt: %r → %r", raw_prompt, rewritten)
+        return _with_generation_guards(rewritten)
+
+    translated = translate_to_english(raw_prompt)
+    guarded = _with_generation_guards(translated)
+    logger.info("Fallback generation prompt: %r → %r", raw_prompt, guarded)
+    return guarded
 
 
 def _upload_bytes_to_s3(object_key: str, data: bytes, content_type: str) -> None:
@@ -81,7 +169,7 @@ def _upload_bytes_to_s3(object_key: str, data: bytes, content_type: str) -> None
 
 def run_generate(job: dict) -> tuple[str, str]:
     """텍스트 프롬프트 → Ideogram 생성 → S3 업로드. (output_key, enhanced_prompt) 반환."""
-    prompt = translate_to_english((job.get("prompt") or "").strip())
+    prompt = rewrite_for_image_generation((job.get("prompt") or "").strip())
     if not prompt:
         raise ValueError("생성 프롬프트가 없습니다.")
 
@@ -96,7 +184,15 @@ def run_generate(job: dict) -> tuple[str, str]:
         resp = client.post(
             f"{_ideogram_base_url()}/generate",
             headers={"Api-Key": api_key, "Content-Type": "application/json"},
-            json={"image_request": {"prompt": prompt, "model": model, "aspect_ratio": "ASPECT_1_1"}},
+            json={
+                "image_request": {
+                    "prompt": prompt,
+                    "model": model,
+                    "aspect_ratio": "ASPECT_1_1",
+                    "magic_prompt_option": "OFF",
+                    "style_type": "AUTO",
+                }
+            },
         )
         try:
             resp.raise_for_status()
@@ -110,7 +206,7 @@ def run_generate(job: dict) -> tuple[str, str]:
 
         item = items[0]
         image_url: str = item["url"]
-        enhanced_prompt = (item.get("prompt") or "").strip() or prompt
+        enhanced_prompt = prompt
 
         img_resp = client.get(image_url)
         img_resp.raise_for_status()
@@ -149,6 +245,8 @@ def run_enhance(job: dict) -> tuple[str, str]:
     obj = s3.get_object(Bucket=bucket, Key=job["object_key"])
     image_bytes = obj["Body"].read()
     content_type = obj.get("ContentType", "image/jpeg")
+    if not isinstance(content_type, str) or not content_type.startswith("image/"):
+        content_type = _guess_image_content_type(job["object_key"])
 
     logger.info("Calling Ideogram V3 remix for job %s prompt=%r", job["id"], prompt)
 
@@ -195,7 +293,7 @@ def process_job_sync(job_id: str) -> dict:
 
     url = os.getenv("SUPABASE_URL", "")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    schema = os.getenv("SUPABASE_SCHEMA", "dev")
+    schema = os.getenv("SUPABASE_SCHEMA", "public")
     supabase = create_client(url, key)
 
     supabase.schema(schema).table("jobs").update({"status": "processing", "error": None}).eq("id", job_id).execute()

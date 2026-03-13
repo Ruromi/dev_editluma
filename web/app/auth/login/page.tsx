@@ -16,17 +16,17 @@ export default async function LoginPage({
     <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-indigo-400">EditLuma</h1>
-          <p className="text-gray-400 mt-1">로그인</p>
+          <h1 className="text-2xl font-semibold text-gray-900 tracking-tight">EditLuma</h1>
+          <p className="text-gray-500 mt-1">로그인</p>
         </div>
 
         {error && (
-          <div className="bg-red-900/40 border border-red-700 text-red-300 text-sm rounded-lg px-4 py-3">
+          <div className="bg-red-50 border border-red-700 text-red-600 text-sm rounded-lg px-4 py-3">
             {error}
           </div>
         )}
         {message && (
-          <div className="bg-green-900/40 border border-green-700 text-green-300 text-sm rounded-lg px-4 py-3">
+          <div className="bg-green-50 border border-green-700 text-green-600 text-sm rounded-lg px-4 py-3">
             {message}
           </div>
         )}
@@ -34,7 +34,7 @@ export default async function LoginPage({
         <form action={login} className="space-y-4">
           <input type="hidden" name="next" value={nextPath} />
           <div>
-            <label htmlFor="email" className="block text-sm text-gray-300 mb-1">
+            <label htmlFor="email" className="block text-sm text-gray-400 mb-1">
               이메일
             </label>
             <input
@@ -42,12 +42,12 @@ export default async function LoginPage({
               name="email"
               type="email"
               required
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-gray-800 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               placeholder="you@example.com"
             />
           </div>
           <div>
-            <label htmlFor="password" className="block text-sm text-gray-300 mb-1">
+            <label htmlFor="password" className="block text-sm text-gray-400 mb-1">
               비밀번호
             </label>
             <input
@@ -56,13 +56,13 @@ export default async function LoginPage({
               type="password"
               required
               minLength={6}
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 text-gray-100 placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-gray-800 placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               placeholder="••••••••"
             />
           </div>
           <button
             type="submit"
-            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-white hover:bg-indigo-500 transition-colors"
+            className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 font-medium text-gray-900 hover:bg-indigo-500 transition-colors"
           >
             로그인
           </button>
@@ -70,10 +70,10 @@ export default async function LoginPage({
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-700" />
+            <div className="w-full border-t border-gray-300" />
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="bg-gray-950 px-2 text-gray-500">또는</span>
+            <span className="bg-white px-2 text-gray-500">또는</span>
           </div>
         </div>
 
@@ -81,7 +81,7 @@ export default async function LoginPage({
           <input type="hidden" name="next" value={nextPath} />
           <button
             type="submit"
-            className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 font-medium text-gray-100 hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+            className="w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 font-medium text-gray-800 hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -107,7 +107,7 @@ export default async function LoginPage({
 
         <p className="text-center text-sm text-gray-500">
           계정이 없으신가요?{" "}
-          <Link href="/auth/signup" className="text-indigo-400 hover:text-indigo-300">
+          <Link href="/auth/signup" className="text-indigo-600 hover:text-indigo-500">
             회원가입
           </Link>
         </p>
