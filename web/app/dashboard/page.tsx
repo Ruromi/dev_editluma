@@ -30,6 +30,42 @@ interface CreditSummary {
   initial_credits: number;
 }
 
+const MAX_UPLOAD_FILE_SIZE_BYTES = 15 * 1024 * 1024;
+const ALLOWED_UPLOAD_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/heic",
+  "image/heif",
+]);
+const PROMPT_EXAMPLES = [
+  {
+    label: "동화풍 카페 장면",
+    image: "/prompt-examples/fairytale-cafe.png",
+    prompt:
+      "A fairytale princess with very long golden hair sitting at a cozy cafe table, holding a tiny espresso cup, pink dress, warm indoor lighting, shallow depth of field, whimsical cinematic detail",
+  },
+  {
+    label: "뷰티 포트레이트",
+    image: "/prompt-examples/beauty-portrait.png",
+    prompt:
+      "Clean beauty portrait of a young East Asian woman, natural glowing skin, beige satin blouse, centered composition, soft daylight, realistic facial detail, minimal editorial styling",
+  },
+  {
+    label: "팝아트 스타일 변환",
+    image: "/prompt-examples/pop-art-grid.png",
+    prompt:
+      "A four-panel pop art portrait series of an androgynous person with round glasses, neon cyan and magenta palette, bold graphic shapes, mixed illustration styles, gallery poster composition",
+  },
+  {
+    label: "시네마틱 스트리트",
+    image: "/prompt-examples/cinematic-street.png",
+    prompt:
+      "Cinematic street portrait of a stylish young woman in a beige coat, soft bokeh lights, narrow city alley, warm glow, fashion editorial mood, realistic photography",
+  },
+];
+
 async function readApiError(response: Response, fallback: string) {
   try {
     const payload = await response.json();
@@ -499,6 +535,7 @@ function DashboardPageContent() {
   const [userId, setUserId] = useState<string | null>(null);
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [creditCost, setCreditCost] = useState(10);
+  const [expandedPromptExample, setExpandedPromptExample] = useState<string | null>(null);
 
   const [prompt, setPrompt] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -636,8 +673,13 @@ function DashboardPageContent() {
       return;
     }
 
-    if (attachedFile && !attachedFile.type.startsWith("image/")) {
-      setError("이미지 파일만 첨부할 수 있습니다.");
+    if (attachedFile && !ALLOWED_UPLOAD_TYPES.has(attachedFile.type)) {
+      setError("JPG, PNG, WEBP, GIF, HEIC 파일만 첨부할 수 있습니다.");
+      return;
+    }
+
+    if (attachedFile && attachedFile.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+      setError("업로드 가능한 최대 파일 크기는 15MB입니다.");
       return;
     }
 
@@ -658,7 +700,11 @@ function DashboardPageContent() {
         try {
           presignRes = await apiFetch("/api/upload/presign", {
             method: "POST",
-            body: JSON.stringify({ filename: attachedFile.name, content_type: attachedFile.type }),
+            body: JSON.stringify({
+              filename: attachedFile.name,
+              content_type: attachedFile.type,
+              file_size: attachedFile.size,
+            }),
           });
         } catch (err) {
           throw new Error(err instanceof Error ? err.message : apiConnErrMsg);
@@ -899,6 +945,75 @@ function DashboardPageContent() {
                 {error}
               </div>
             )}
+
+            <div className="w-full rounded-2xl border border-gray-200 bg-white/85 p-4 shadow-sm">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-gray-500">
+                  프롬프트 예시
+                </span>
+                <span className="text-xs text-gray-500">
+                  아래 카드를 누르면 프롬프트와 함께 이미지 톤도 참고할 수 있습니다
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {PROMPT_EXAMPLES.map((example) => {
+                  const isExpanded = expandedPromptExample === example.label;
+
+                  return (
+                    <div
+                      key={example.label}
+                      className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 text-left transition-all hover:border-indigo-500/40 hover:bg-indigo-500/5 hover:shadow-lg hover:shadow-indigo-900/10"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrompt(example.prompt);
+                          setError(null);
+                          setExpandedPromptExample((current) =>
+                            current === example.label ? null : example.label
+                          );
+                        }}
+                        disabled={submitting}
+                        aria-expanded={isExpanded}
+                        className="group block w-full disabled:opacity-50"
+                      >
+                        <div className="bg-gradient-to-br from-gray-100 via-white to-gray-100 p-3">
+                          <div className="aspect-square w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={example.image}
+                              alt={example.label}
+                              className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.02]"
+                            />
+                          </div>
+                        </div>
+                        <div className="border-t border-gray-200 px-3 py-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-semibold text-gray-900">{example.label}</p>
+                            <span className="text-[11px] text-indigo-600">
+                              {isExpanded ? "프롬프트 숨기기" : "이미지 클릭"}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            {isExpanded ? "입력창에 적용되었습니다" : "전체 이미지 보기 + 프롬프트 펼치기"}
+                          </p>
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="border-t border-gray-200 bg-white px-3 py-3">
+                          <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500">
+                            Prompt
+                          </p>
+                          <p className="mt-2 text-sm leading-6 text-gray-700">
+                            {example.prompt}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         );
       })()}
