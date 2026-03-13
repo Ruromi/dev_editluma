@@ -14,19 +14,20 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
+      "src": "/((?!access-denied(?:/|$)|_next(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$).*)",
       "missing": [
         {
           "type": "header",
           "key": "x-forwarded-for"
         }
       ],
-      "mitigate": {
-        "action": "deny"
-      }
+      "headers": {
+        "Location": "/access-denied"
+      },
+      "status": 307
     },
     {
-      "src": "/(.*)",
+      "src": "/((?!access-denied(?:/|$)|_next(?:/|$)|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$).*)",
       "has": [
         {
           "type": "header",
@@ -36,9 +37,10 @@
           }
         }
       ],
-      "mitigate": {
-        "action": "deny"
-      }
+      "headers": {
+        "Location": "/access-denied"
+      },
+      "status": 307
     },
     {
       "src": "/api/(.*)",
