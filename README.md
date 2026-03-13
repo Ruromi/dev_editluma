@@ -133,6 +133,7 @@ supabase/migrations/0002_add_mode_prompt.sql
 ```
 supabase/migrations/0005_add_user_credits.sql
 supabase/migrations/0006_add_credit_ledger.sql
+supabase/migrations/0007_add_credit_usage_ledger.sql
 ```
 
 ## 로컬 트러블슈팅
