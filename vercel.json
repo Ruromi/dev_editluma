@@ -14,6 +14,33 @@
   ],
   "routes": [
     {
+      "src": "/(.*)",
+      "missing": [
+        {
+          "type": "header",
+          "key": "x-forwarded-for"
+        }
+      ],
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-forwarded-for",
+          "value": {
+            "neq": "fa8108dc82027d57f02afdbb95129071595c31c36d193787d7fddaf9de505254"
+          }
+        }
+      ],
+      "mitigate": {
+        "action": "deny"
+      }
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/api/index.py"
     },
