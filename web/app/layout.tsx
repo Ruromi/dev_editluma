@@ -6,11 +6,9 @@ import UserMenu from "@/components/UserMenu";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "EditLuma",
+  title: "EditLuma dev",
   description: "AI-powered image generation and enhancement",
 };
-
-const isDevelopment = process.env.NEXT_PUBLIC_ENVIRONMENT === "dev";
 
 export default function RootLayout({
   children,
@@ -24,9 +22,7 @@ export default function RootLayout({
           {/* 좌: 로고 */}
           <div className="flex items-center gap-2 w-40">
             <Link href="/" className="text-xl font-bold text-indigo-400 hover:text-indigo-300 transition-colors">EditLuma</Link>
-            {isDevelopment && (
-              <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">dev</span>
-            )}
+            <span className="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">dev</span>
           </div>
           {/* 중앙: 대시보드 탭 nav */}
           <div className="flex-1 flex justify-center">
