@@ -182,6 +182,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           status: String(row.status ?? "requested"),
           amount: Number(row.amount ?? 0),
           reason: String(row.reason ?? "-"),
+          comment: String(row.comment ?? ""),
           delta: Number(row.credits_reversed ?? 0) * -1,
           created_at: String(row.created_at ?? new Date().toISOString()),
         }))
@@ -204,6 +205,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             status: String(metadata.refund_status ?? "recorded"),
             amount: Number(metadata.amount ?? 0),
             reason: String(metadata.reason ?? "-"),
+            comment: String(metadata.comment ?? ""),
             delta: ledgerRow.delta,
             created_at: ledgerRow.created_at,
           };
@@ -365,23 +367,31 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
         <div className="space-y-4">
           {paymentRows.map((row) => {
-            const alreadyRefunded = refundByOrderId.has(row.orderId);
+            const existingRefund = refundByOrderId.get(row.orderId);
+            const refundStatus = existingRefund?.status ?? null;
+            const refundLocked =
+              refundStatus === "pending" || refundStatus === "completed" || refundStatus === "manual_review";
             const canRefund =
               Boolean(process.env.POLAR_ACCESS_TOKEN) &&
-              !alreadyRefunded &&
               row.amount > 0 &&
               row.delta > 0 &&
-              row.currentBalance >= row.delta;
+              row.currentBalance >= row.delta &&
+              (!existingRefund || refundStatus === "requested" || refundStatus === "failed");
 
             return (
               <div key={row.id} className="rounded-2xl border border-gray-200 p-4">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium text-gray-900">{row.packageName}</p>
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">
                         {row.email}
                       </span>
+                      {existingRefund && (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+                          {formatRefundStatusLabel(existingRefund.status)}
+                        </span>
+                      )}
                     </div>
                     <div className="grid gap-1 text-sm text-gray-500">
                       <p>주문 ID: <span className="font-mono text-gray-900">{row.orderId || "-"}</span></p>
@@ -390,6 +400,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       <p>현재 잔액: <span className="text-gray-900">{row.currentBalance}</span></p>
                       <p>결제 시각: <span className="text-gray-900">{dateTime.format(new Date(row.created_at))}</span></p>
                     </div>
+                    {existingRefund && (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm">
+                        <p className="font-medium text-amber-900">환불 요청 내용</p>
+                        <p className="mt-2 text-xs uppercase tracking-[0.14em] text-amber-700">사유</p>
+                        <p className="mt-1 text-sm text-amber-900">{existingRefund.reason || "-"}</p>
+                        <p className="mt-3 text-xs uppercase tracking-[0.14em] text-amber-700">메모</p>
+                        <p className="mt-1 text-sm text-amber-900">{existingRefund.comment || "-"}</p>
+                      </div>
+                    )}
                   </div>
 
                   <form action={refundPayment} className="w-full max-w-sm space-y-2">
@@ -422,15 +441,31 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                       disabled={!canRefund}
                       className="w-full rounded-xl px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400 bg-red-600 text-white hover:bg-red-500"
                     >
-                      전액 환불
+                      {refundStatus === "requested"
+                        ? "요청 처리 후 환불"
+                        : refundStatus === "failed"
+                          ? "환불 재시도"
+                          : "전액 환불"}
                     </button>
                     {!process.env.POLAR_ACCESS_TOKEN && (
                       <p className="text-xs text-amber-600">POLAR_ACCESS_TOKEN이 없어 환불 요청을 보낼 수 없습니다.</p>
                     )}
-                    {alreadyRefunded && (
-                      <p className="text-xs text-gray-500">이미 환불 처리된 주문입니다.</p>
+                    {refundStatus === "requested" && (
+                      <p className="text-xs text-amber-700">사용자가 환불 요청을 남긴 주문입니다. 검토 후 환불을 진행하세요.</p>
                     )}
-                    {!alreadyRefunded && row.currentBalance < row.delta && (
+                    {refundLocked && (
+                      <p className="text-xs text-gray-500">
+                        {refundStatus === "completed"
+                          ? "이미 환불 처리된 주문입니다."
+                          : refundStatus === "manual_review"
+                            ? "수동 검토가 필요한 환불 건입니다."
+                            : "이미 환불 처리 중인 주문입니다."}
+                      </p>
+                    )}
+                    {refundStatus === "failed" && (
+                      <p className="text-xs text-amber-700">이전 환불 시도가 실패했습니다. 재시도 전에 주문 상태를 확인하세요.</p>
+                    )}
+                    {!refundLocked && row.currentBalance < row.delta && (
                       <p className="text-xs text-gray-500">현재 잔액이 부족해 자동 환불 회수가 불가능합니다.</p>
                     )}
                   </form>
@@ -461,6 +496,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <tr className="border-b border-gray-200">
                 <th className="pb-3 font-medium">이메일</th>
                 <th className="pb-3 font-medium">주문 ID</th>
+                <th className="pb-3 font-medium">사유 / 메모</th>
                 <th className="pb-3 font-medium">환불 금액</th>
                 <th className="pb-3 font-medium">회수 크레딧</th>
                 <th className="pb-3 font-medium">상태</th>
@@ -472,6 +508,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 <tr key={row.id} className="border-b border-gray-100 last:border-0">
                   <td className="py-3 pr-4 text-gray-900">{row.email}</td>
                   <td className="py-3 pr-4 font-mono text-xs text-gray-500">{row.orderId || "-"}</td>
+                  <td className="py-3 pr-4 text-gray-500">
+                    <p className="font-medium text-gray-900">{row.reason}</p>
+                    <p className="mt-1 text-xs leading-5 text-gray-500">{row.comment || "-"}</p>
+                  </td>
                   <td className="py-3 pr-4 text-gray-900">{row.amount > 0 ? currency.format(row.amount / 100) : "-"}</td>
                   <td className="py-3 pr-4 text-gray-900">{row.delta}</td>
                   <td className="py-3 pr-4 text-gray-500">{row.status}</td>
@@ -480,7 +520,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               ))}
               {refundRows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-gray-500">
+                  <td colSpan={7} className="py-6 text-center text-gray-500">
                     아직 환불 기록이 없습니다.
                   </td>
                 </tr>
