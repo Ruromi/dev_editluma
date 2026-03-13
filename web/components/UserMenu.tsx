@@ -34,7 +34,7 @@ export default async function UserMenu({
     user.email?.split("@")[0] ||
     (initialLanguage === "ko" ? "사용자" : "User");
   const avatarUrl = user.user_metadata?.avatar_url;
-  const showAdminLink = hasAdminAccess(headerList, user.email);
+  const showAdminLink = await hasAdminAccess(headerList, user.email);
 
   return (
     <UserMenuPopover

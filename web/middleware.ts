@@ -1,9 +1,27 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { hasAdminAccess } from "@/lib/admin";
+import { hasAdminAccess, hasDevSiteAccess } from "@/lib/admin";
 import { ACCOUNT_DELETED_ERROR_MESSAGE, isDeletedAccountMetadata } from "@/lib/account-status";
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  if (!(await hasDevSiteAccess(request.headers))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/access-denied";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  const needsSessionCheck =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/auth");
+
+  if (!needsSessionCheck) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -33,8 +51,6 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
   const isDeletedUser = isDeletedAccountMetadata(user);
 
-  const { pathname } = request.nextUrl;
-
   // Protect app pages — redirect unauthenticated users to login
   if ((pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) && (!user || isDeletedUser)) {
     const url = request.nextUrl.clone();
@@ -47,7 +63,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (pathname.startsWith("/admin") && !hasAdminAccess(request.headers, user?.email)) {
+  if (pathname.startsWith("/admin") && !(await hasAdminAccess(request.headers, user?.email))) {
     return new NextResponse("Not Found", { status: 404 });
   }
 
@@ -62,5 +78,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/auth/:path*"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|access-denied).*)"],
 };

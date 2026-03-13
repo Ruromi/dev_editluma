@@ -1,7 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+from app.core.ip_access import has_site_ip_access
 from app.routers import ai, billing, credits, health, jobs, upload
 
 app = FastAPI(
@@ -19,6 +21,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def restrict_dev_site_access(request: Request, call_next):
+    if not has_site_ip_access(request):
+        return JSONResponse(status_code=403, content={"detail": "접근할 수 없는 IP입니다."})
+
+    return await call_next(request)
 
 app.include_router(health.router)
 app.include_router(upload.router)

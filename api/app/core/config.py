@@ -45,6 +45,8 @@ class Settings(BaseSettings):
     environment: str = "dev"
     web_app_url: str = "http://localhost:3001"
     cors_origins: list[str] = ["http://localhost:3001", "http://127.0.0.1:3001"]
+    dev_allowed_ips: str = ""
+    dev_allowed_ip_hashes: str = ""
     presign_upload_expiry_seconds: int = 300
     presign_download_expiry_seconds: int = 3600
     max_upload_file_size_bytes: int = 15 * 1024 * 1024

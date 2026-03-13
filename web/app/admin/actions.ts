@@ -45,7 +45,7 @@ async function requireAdminAccess() {
     redirect("/auth/login?next=/admin");
   }
 
-  if (!hasAdminAccess(headerList, user.email)) {
+  if (!(await hasAdminAccess(headerList, user.email))) {
     redirect("/dashboard");
   }
 

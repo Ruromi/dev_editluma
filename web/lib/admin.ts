@@ -2,8 +2,20 @@ type HeadersLike = {
   get(name: string): string | null;
 };
 
-const DEFAULT_ADMIN_IPS = ["fa8108dc82027d57f02afdbb95129071595c31c36d193787d7fddaf9de505254"];
-const DEFAULT_ADMIN_EMAILS = ["f76cf3ae39b549e8e794174eb4ff9f6241efb02cee4ca4323d8c6e13b1d8e5c0"];
+const DEFAULT_ALLOWED_IP_HASHES = [
+  "fa8108dc82027d57f02afdbb95129071595c31c36d193787d7fddaf9de505254",
+];
+const DEFAULT_ADMIN_EMAIL_HASHES = [
+  "f76cf3ae39b549e8e794174eb4ff9f6241efb02cee4ca4323d8c6e13b1d8e5c0",
+];
+const LOCAL_IPS = new Set(["127.0.0.1", "localhost"]);
+
+function splitCsv(raw: string | undefined) {
+  return (raw ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
 
 function normalizeIp(ip: string) {
   const trimmed = ip.trim();
@@ -17,30 +29,40 @@ function normalizeIp(ip: string) {
   return trimmed;
 }
 
-export function getAllowedAdminIps() {
-  const raw = process.env.ADMIN_ALLOWED_IPS?.trim();
-  const values = (raw ? raw.split(",") : DEFAULT_ADMIN_IPS)
-    .map((value) => normalizeIp(value))
-    .filter(Boolean);
-
-  if (process.env.NODE_ENV !== "production") {
-    values.push("127.0.0.1", "localhost");
-  }
-
-  return new Set(values);
-}
-
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-export function getAllowedAdminEmails() {
-  const raw = process.env.ADMIN_EMAILS?.trim();
-  const values = (raw ? raw.split(",") : DEFAULT_ADMIN_EMAILS)
-    .map((value) => normalizeEmail(value))
-    .filter(Boolean);
+async function sha256Hex(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
 
-  return new Set(values);
+async function resolveAllowedHashes({
+  rawValues,
+  rawHashValues,
+  normalize,
+  defaultHashes,
+}: {
+  rawValues?: string;
+  rawHashValues?: string;
+  normalize: (value: string) => string;
+  defaultHashes: string[];
+}) {
+  const configuredHashes = splitCsv(rawHashValues).map((value) => value.toLowerCase());
+  if (configuredHashes.length > 0) {
+    return new Set(configuredHashes);
+  }
+
+  const configuredValues = splitCsv(rawValues).map(normalize).filter(Boolean);
+  if (configuredValues.length > 0) {
+    return new Set(await Promise.all(configuredValues.map((value) => sha256Hex(value))));
+  }
+
+  return new Set(defaultHashes);
 }
 
 export function getRequestIp(headersLike: HeadersLike) {
@@ -58,26 +80,79 @@ export function getRequestIp(headersLike: HeadersLike) {
   return "";
 }
 
-export function hasAdminIpAccess(headersLike: HeadersLike) {
-  const requestIp = getRequestIp(headersLike);
+async function hasIpHashAccess(
+  requestIp: string,
+  {
+    rawValues,
+    rawHashValues,
+    defaultHashes,
+  }: {
+    rawValues?: string;
+    rawHashValues?: string;
+    defaultHashes: string[];
+  }
+) {
   if (!requestIp) {
     return false;
   }
 
-  return getAllowedAdminIps().has(requestIp);
+  if (process.env.NODE_ENV !== "production" && LOCAL_IPS.has(requestIp)) {
+    return true;
+  }
+
+  const allowedHashes = await resolveAllowedHashes({
+    rawValues,
+    rawHashValues,
+    normalize: normalizeIp,
+    defaultHashes,
+  });
+
+  return allowedHashes.has(await sha256Hex(requestIp));
 }
 
-export function hasAdminEmailAccess(email: string | null | undefined) {
+export async function hasDevSiteAccess(headersLike: HeadersLike) {
+  const requestIp = getRequestIp(headersLike);
+  return hasIpHashAccess(requestIp, {
+    rawValues: process.env.DEV_ALLOWED_IPS ?? process.env.ADMIN_ALLOWED_IPS,
+    rawHashValues:
+      process.env.DEV_ALLOWED_IP_HASHES ?? process.env.ADMIN_ALLOWED_IP_HASHES,
+    defaultHashes: DEFAULT_ALLOWED_IP_HASHES,
+  });
+}
+
+export async function hasAdminIpAccess(headersLike: HeadersLike) {
+  const requestIp = getRequestIp(headersLike);
+  return hasIpHashAccess(requestIp, {
+    rawValues: process.env.ADMIN_ALLOWED_IPS ?? process.env.DEV_ALLOWED_IPS,
+    rawHashValues:
+      process.env.ADMIN_ALLOWED_IP_HASHES ?? process.env.DEV_ALLOWED_IP_HASHES,
+    defaultHashes: DEFAULT_ALLOWED_IP_HASHES,
+  });
+}
+
+export async function hasAdminEmailAccess(email: string | null | undefined) {
   if (!email) {
     return false;
   }
 
-  return getAllowedAdminEmails().has(normalizeEmail(email));
+  const allowedHashes = await resolveAllowedHashes({
+    rawValues: process.env.ADMIN_EMAILS,
+    rawHashValues: process.env.ADMIN_EMAIL_HASHES,
+    normalize: normalizeEmail,
+    defaultHashes: DEFAULT_ADMIN_EMAIL_HASHES,
+  });
+
+  return allowedHashes.has(await sha256Hex(normalizeEmail(email)));
 }
 
-export function hasAdminAccess(
+export async function hasAdminAccess(
   headersLike: HeadersLike,
   email: string | null | undefined
 ) {
-  return hasAdminIpAccess(headersLike) && hasAdminEmailAccess(email);
+  const [hasIpAccess, hasEmailAccess] = await Promise.all([
+    hasAdminIpAccess(headersLike),
+    hasAdminEmailAccess(email),
+  ]);
+
+  return hasIpAccess && hasEmailAccess;
 }
