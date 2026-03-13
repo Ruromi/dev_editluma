@@ -33,6 +33,8 @@ pip install -r requirements.txt
 
 cp .env.example .env   # Supabase URL, service_role key, Storage 키 입력
 
+# Supabase API 설정에서 dev 스키마를 노출해야 합니다.
+
 uvicorn app.main:app --reload --port 8010
 # → http://localhost:8010/docs
 ```
@@ -72,10 +74,13 @@ supabase/migrations/0001_init_dev_schema.sql
 | `NEXT_PUBLIC_SUPABASE_URL` | web | Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web | 브라우저 클라이언트 (공개 가능) |
 | `SUPABASE_SERVICE_ROLE_KEY` | api | 서버 전용 — **절대 노출 금지** |
-| `SUPABASE_SCHEMA` | api | 기본값 `public` (권장), `dev`는 명시적으로 노출한 경우에만 사용 |
+| `SUPABASE_SCHEMA` | api/web/worker | 개발 기본값 `dev` — 운영 `public`과 분리하려면 Supabase API에 `dev` 스키마를 노출해야 함 |
 | `STORAGE_ACCESS_KEY` | api | S3 호환 스토리지 액세스 키 |
 | `STORAGE_SECRET_KEY` | api | S3 호환 스토리지 시크릿 키 |
 | `REDIS_URL` | api/worker | Redis 연결 URL |
+
+개발 환경에서는 `public.user_credits`가 아니라 `dev.user_credits`를 사용합니다.
+`dev` 스키마가 API에 노출되지 않으면 서버가 시작되더라도 요청 시 즉시 실패하도록 해 두었습니다.
 
 ## 사용 흐름
 

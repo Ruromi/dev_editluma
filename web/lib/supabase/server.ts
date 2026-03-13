@@ -48,7 +48,7 @@ export function createAdminClient() {
   });
 }
 
-/** Schema helper — reads SUPABASE_SCHEMA env var, defaults to "public" */
+/** Schema helper — reads SUPABASE_SCHEMA env var, defaults to "dev" in the dev repo */
 export function dbSchema(): string {
-  return process.env.SUPABASE_SCHEMA ?? "public";
+  return process.env.SUPABASE_SCHEMA ?? "dev";
 }

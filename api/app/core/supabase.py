@@ -26,8 +26,8 @@ def db_schema() -> str:
     """Returns the active Postgres schema.
 
     On first call the configured schema is probed with a lightweight query.
-    If PostgREST returns PGRST106 (schema not exposed) the function
-    transparently falls back to 'public' and caches that decision.
+    Dev should fail fast if the configured schema is not exposed, rather than
+    silently falling back to public and mixing development/production data.
     """
     global _resolved_schema
     if _resolved_schema is not None:
@@ -47,12 +47,10 @@ def db_schema() -> str:
         code = getattr(exc, "code", "") or ""
         msg = str(exc)
         if "PGRST106" in code or "PGRST106" in msg:
-            logger.warning(
-                "Schema '%s' is not exposed in PostgREST (PGRST106); "
-                "falling back to 'public'.",
-                configured,
-            )
-            _resolved_schema = "public"
+            raise RuntimeError(
+                f"Schema '{configured}' is not exposed in PostgREST. "
+                "Expose it in Supabase API settings before running dev."
+            ) from exc
         else:
             # Unknown error during probe — keep configured and let actual
             # operations surface the real error with proper context.

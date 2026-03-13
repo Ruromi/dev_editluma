@@ -195,7 +195,7 @@ def process_job_sync(job_id: str) -> dict:
 
     url = os.getenv("SUPABASE_URL", "")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    schema = os.getenv("SUPABASE_SCHEMA", "public")
+    schema = os.getenv("SUPABASE_SCHEMA", "dev")
     supabase = create_client(url, key)
 
     supabase.schema(schema).table("jobs").update({"status": "processing", "error": None}).eq("id", job_id).execute()

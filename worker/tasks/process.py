@@ -70,7 +70,7 @@ def _get_supabase():
 
     url = os.getenv("SUPABASE_URL", "")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-    schema = os.getenv("SUPABASE_SCHEMA", "public")
+    schema = os.getenv("SUPABASE_SCHEMA", "dev")
     client = create_client(url, key)
     return client, schema
 
