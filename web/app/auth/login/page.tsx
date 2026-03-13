@@ -4,9 +4,13 @@ import { login, loginWithGoogle } from "../actions";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; message?: string }>;
+  searchParams: Promise<{ error?: string; message?: string; next?: string }>;
 }) {
-  const { error, message } = await searchParams;
+  const { error, message, next } = await searchParams;
+  const nextPath =
+    typeof next === "string" && next.startsWith("/") && !next.startsWith("//")
+      ? next
+      : "/dashboard";
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center px-4">
@@ -28,6 +32,7 @@ export default async function LoginPage({
         )}
 
         <form action={login} className="space-y-4">
+          <input type="hidden" name="next" value={nextPath} />
           <div>
             <label htmlFor="email" className="block text-sm text-gray-300 mb-1">
               이메일
@@ -73,6 +78,7 @@ export default async function LoginPage({
         </div>
 
         <form action={loginWithGoogle}>
+          <input type="hidden" name="next" value={nextPath} />
           <button
             type="submit"
             className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-2.5 font-medium text-gray-100 hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"

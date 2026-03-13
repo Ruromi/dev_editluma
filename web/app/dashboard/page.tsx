@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { Suspense, useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { broadcastCreditBalance } from "@/lib/credits";
+import { createClient } from "@/lib/supabase/client";
 
 type JobStatus = "pending" | "processing" | "done" | "failed";
 type JobMode = "enhance" | "generate";
@@ -9,7 +11,7 @@ type JobMode = "enhance" | "generate";
 interface Job {
   id: string;
   filename: string;
-  type: "image" | "video";
+  type: "image";
   mode?: JobMode;
   prompt?: string;
   original_prompt?: string;
@@ -18,6 +20,26 @@ interface Job {
   created_at: string;
   output_key?: string;
   output_url?: string;
+  remaining_credits?: number;
+  credit_cost?: number;
+}
+
+interface CreditSummary {
+  balance: number;
+  cost_per_image: number;
+  initial_credits: number;
+}
+
+async function readApiError(response: Response, fallback: string) {
+  try {
+    const payload = await response.json();
+    if (payload && typeof payload.detail === "string") {
+      return payload.detail;
+    }
+  } catch {
+    // fall back to the provided message
+  }
+  return fallback;
 }
 
 const STATUS_LABEL: Record<JobStatus, string> = {
@@ -42,18 +64,153 @@ const MODE_LABEL: Record<JobMode, string> = {
 const POLL_INTERVAL_MS = 3000;
 
 // ---------------------------------------------------------------------------
+// Mosaic Assembly – image pieces fly in and assemble into a photo
+// ---------------------------------------------------------------------------
+const MOSAIC_COLORS = [
+  ["#818cf8", "#6366f1", "#4f46e5"],  // row 0: indigo tones
+  ["#a78bfa", "#8b5cf6", "#7c3aed"],  // row 1: violet tones
+  ["#67e8f9", "#22d3ee", "#06b6d4"],  // row 2: cyan tones
+];
+
+function PixelAgent({ status }: { status: "pending" | "processing" }) {
+  const isProcessing = status === "processing";
+  const dur = "3.5s";
+
+  return (
+    <div className="flex flex-col items-center gap-5 select-none">
+      {/* Mosaic frame */}
+      <div className="relative" style={{ width: 138, height: 138 }}>
+        {/* Outer glow ring when processing */}
+        {isProcessing && (
+          <div
+            className="absolute rounded-2xl"
+            style={{
+              inset: -6,
+              border: "2px solid rgba(129,140,248,0.3)",
+              animation: "mosaic-pulse-ring 2s ease-out infinite",
+            }}
+          />
+        )}
+
+        {/* Frame border */}
+        <div
+          className="absolute inset-0 rounded-xl border-2 border-gray-700/50 overflow-hidden"
+          style={{ animation: isProcessing ? `mosaic-glow ${dur} ease-in-out infinite` : "none" }}
+        >
+          {/* 3×3 mosaic grid */}
+          <div className="grid grid-cols-3 grid-rows-3 w-full h-full gap-[2px] bg-gray-900/80 p-[2px]">
+            {Array.from({ length: 9 }).map((_, i) => {
+              const row = Math.floor(i / 3);
+              const col = i % 3;
+              return (
+                <div
+                  key={i}
+                  className="rounded-sm relative overflow-hidden"
+                  style={{
+                    background: isProcessing ? MOSAIC_COLORS[row][col] : "#1f2937",
+                    animation: isProcessing
+                      ? `mosaic-piece-${i} ${dur} cubic-bezier(0.34, 1.56, 0.64, 1) infinite`
+                      : "none",
+                    opacity: isProcessing ? undefined : 0.3,
+                  }}
+                >
+                  {/* Inner texture – subtle gradient */}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: `linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%)`,
+                    }}
+                  />
+                  {/* Pixel dots for texture */}
+                  <div
+                    className="absolute rounded-full"
+                    style={{
+                      width: 4, height: 4,
+                      background: "rgba(255,255,255,0.2)",
+                      top: 6 + (i % 3) * 4,
+                      left: 8 + (i % 2) * 6,
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Center image icon (appears after pieces settle) */}
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{
+            opacity: isProcessing ? 0 : 0.4,
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="text-gray-600"
+            width={32} height={32}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+
+        {/* Floating particles when processing */}
+        {isProcessing && (
+          <>
+            {[
+              { x: -8, y: 20, size: 5, color: "#c4b5fd", delay: "0s" },
+              { x: 140, y: 40, size: 4, color: "#67e8f9", delay: "0.8s" },
+              { x: 30, y: -8, size: 3, color: "#a78bfa", delay: "1.6s" },
+              { x: 110, y: 142, size: 4, color: "#818cf8", delay: "0.4s" },
+              { x: -6, y: 100, size: 3, color: "#22d3ee", delay: "1.2s" },
+              { x: 142, y: 110, size: 3, color: "#6366f1", delay: "2.0s" },
+            ].map((p, i) => (
+              <div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: p.size, height: p.size,
+                  background: p.color,
+                  left: p.x, top: p.y,
+                  animation: `mosaic-float-dot 2s ease-in-out infinite ${p.delay}`,
+                }}
+              />
+            ))}
+          </>
+        )}
+      </div>
+
+      {/* Status text */}
+      <div className="flex items-center gap-2">
+        {isProcessing && (
+          <div className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-indigo-400"
+                style={{ animation: `mosaic-float-dot 1.2s ease-in-out infinite ${i * 0.3}s` }}
+              />
+            ))}
+          </div>
+        )}
+        <span className="text-xs text-gray-500 font-mono tracking-tight">
+          {isProcessing ? "AI가 이미지를 조합하고 있어요…" : "대기 중…"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Gallery card: skeleton shimmer for pending / processing
 // ---------------------------------------------------------------------------
 function SkeletonCard({ job }: { job: Job }) {
   return (
     <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-900">
-      {/* Shimmer image area */}
-      <div className="aspect-square relative overflow-hidden animate-shimmer">
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5">
-          <div className="w-7 h-7 rounded-full border-2 border-indigo-500/70 border-t-transparent animate-spin" />
-          <span className="text-xs text-gray-500">
-            {job.status === "processing" ? "생성 중…" : "대기 중…"}
-          </span>
+      {/* Pixel agent area */}
+      <div className="aspect-square relative overflow-hidden bg-gray-950/80">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <PixelAgent status={job.status as "pending" | "processing"} />
         </div>
       </div>
       {/* Meta */}
@@ -330,14 +487,18 @@ function GallerySection({ jobs }: { jobs: Job[] }) {
 // ---------------------------------------------------------------------------
 // Main dashboard page
 // ---------------------------------------------------------------------------
-export default function DashboardPage() {
+function DashboardPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const tab = (searchParams.get("tab") ?? "generate") as "generate" | "gallery" | "history";
 
+  const [supabase] = useState(createClient);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [creditCost, setCreditCost] = useState(10);
 
   const [prompt, setPrompt] = useState("");
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
@@ -353,26 +514,85 @@ export default function DashboardPage() {
   // 연결 실패 시 보여줄 힌트 메시지를 API_URL 설정에 맞게 생성합니다.
   const apiConnErrMsg = API_URL
     ? `API 서버(${API_URL})에 연결할 수 없습니다. 서버 URL과 네트워크 상태를 확인하세요.`
-    : "API 서버에 연결할 수 없습니다. Next.js 개발 서버 및 FastAPI(포트 8000)가 실행 중인지 확인하세요.";
+    : "API 서버에 연결할 수 없습니다. Next.js 개발 서버와 FastAPI 서버가 실행 중인지 확인하세요.";
+
+  const getAccessToken = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? null;
+  }, [supabase]);
+
+  const apiFetch = useCallback(
+    async (path: string, init: RequestInit = {}) => {
+      const accessToken = await getAccessToken();
+      if (!accessToken) {
+        throw new Error("세션이 만료되었습니다. 다시 로그인하세요.");
+      }
+
+      const headers = new Headers(init.headers ?? undefined);
+      if (init.body && !headers.has("Content-Type") && typeof init.body === "string") {
+        headers.set("Content-Type", "application/json");
+      }
+      headers.set("Authorization", `Bearer ${accessToken}`);
+
+      return fetch(`${API_URL}${path}`, {
+        ...init,
+        headers,
+      });
+    },
+    [API_URL, getAccessToken]
+  );
+
+  // -------------------------------------------------------------------------
+  // Fetch current user on mount
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+    });
+  }, [supabase]);
 
   // -------------------------------------------------------------------------
   // Job fetching & polling
   // -------------------------------------------------------------------------
   const fetchJobs = useCallback(async () => {
+    if (!userId) return;
     try {
-      const res = await fetch(`${API_URL}/api/jobs`);
+      const res = await apiFetch("/api/jobs");
       if (!res.ok) return;
       const data: Job[] = await res.json();
       setJobs(data);
     } catch {
       // silently ignore polling errors
     }
-  }, [API_URL]);
+  }, [apiFetch, userId]);
 
-  // Initial load on mount
+  const updateCreditBalance = useCallback((nextBalance: number) => {
+    setCreditBalance(nextBalance);
+    broadcastCreditBalance(nextBalance);
+  }, []);
+
+  const redirectToPricing = useCallback(() => {
+    router.push("/pricing?source=insufficient-credits");
+  }, [router]);
+
+  const fetchCredits = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await apiFetch("/api/credits/me");
+      if (!res.ok) return;
+      const data: CreditSummary = await res.json();
+      updateCreditBalance(data.balance);
+      setCreditCost(data.cost_per_image);
+    } catch {
+      // silently ignore polling errors
+    }
+  }, [apiFetch, updateCreditBalance, userId]);
+
+  // Initial load when userId is ready
   useEffect(() => {
     fetchJobs();
-  }, [fetchJobs]);
+    fetchCredits();
+  }, [fetchJobs, fetchCredits]);
 
   // Poll every POLL_INTERVAL_MS while any job is pending/processing
   useEffect(() => {
@@ -394,34 +614,52 @@ export default function DashboardPage() {
       setActiveJobId(null);
     }, 2000);
     return () => clearTimeout(timer);
-  }, [jobs, activeJobId]);
+  }, [jobs, activeJobId, router]);
 
   // -------------------------------------------------------------------------
-  // AI 생성 요청 (파일 첨부 시 파일 기반, 없으면 프롬프트 기반)
+  // AI 요청 (이미지 첨부 시 보정, 없으면 프롬프트 기반 생성)
   // -------------------------------------------------------------------------
   async function handleGenerate() {
     if (!prompt.trim()) {
       setError("프롬프트를 입력하세요.");
       return;
     }
+
+    if (!userId) {
+      setError("사용자 정보를 불러오는 중입니다. 잠시 후 다시 시도하세요.");
+      return;
+    }
+
+    if (attachedFile && !attachedFile.type.startsWith("image/")) {
+      setError("이미지 파일만 첨부할 수 있습니다.");
+      return;
+    }
+
+    if (creditBalance !== null && creditBalance < creditCost) {
+      setError(null);
+      redirectToPricing();
+      return;
+    }
+
     setError(null);
     setSubmitting(true);
 
-    // 파일 첨부된 경우: 업로드 후 파일 기반 요청
+    // 파일 첨부된 경우: 업로드 후 이미지 보정 요청
     if (attachedFile) {
       setUploading(true);
       try {
         let presignRes: Response;
         try {
-          presignRes = await fetch(`${API_URL}/api/upload/presign`, {
+          presignRes = await apiFetch("/api/upload/presign", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ filename: attachedFile.name, content_type: attachedFile.type }),
           });
-        } catch {
-          throw new Error(apiConnErrMsg);
+        } catch (err) {
+          throw new Error(err instanceof Error ? err.message : apiConnErrMsg);
         }
-        if (!presignRes.ok) throw new Error(`업로드 준비 실패 (${presignRes.status})`);
+        if (!presignRes.ok) {
+          throw new Error(await readApiError(presignRes, `업로드 준비 실패 (${presignRes.status})`));
+        }
         const { upload_url, object_key } = await presignRes.json();
 
         let putRes: Response;
@@ -440,17 +678,26 @@ export default function DashboardPage() {
 
         let res: Response;
         try {
-          res = await fetch(`${API_URL}/api/ai/enhance`, {
+          res = await apiFetch("/api/ai/enhance", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ object_key, prompt: prompt.trim() }),
           });
-        } catch {
-          throw new Error(apiConnErrMsg);
+        } catch (err) {
+          throw new Error(err instanceof Error ? err.message : apiConnErrMsg);
         }
-        if (!res.ok) throw new Error(`요청 실패 (HTTP ${res.status})`);
+        if (res.status === 402) {
+          setError(null);
+          redirectToPricing();
+          return;
+        }
+        if (!res.ok) {
+          throw new Error(await readApiError(res, `요청 실패 (HTTP ${res.status})`));
+        }
         const newJob: Job = await res.json();
         setJobs((prev) => [newJob, ...prev]);
+        if (typeof newJob.remaining_credits === "number") {
+          updateCreditBalance(newJob.remaining_credits);
+        }
         setActiveJobId(newJob.id);
         setAttachedFile(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -468,17 +715,28 @@ export default function DashboardPage() {
     try {
       let res: Response;
       try {
-        res = await fetch(`${API_URL}/api/ai/generate`, {
+        res = await apiFetch("/api/ai/generate", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt: prompt.trim() }),
         });
-      } catch {
-        throw new Error(apiConnErrMsg);
+      } catch (err) {
+        throw new Error(err instanceof Error ? err.message : apiConnErrMsg);
       }
-      if (!res.ok) throw new Error(`AI 생성 요청 실패 (HTTP ${res.status}). 잠시 후 다시 시도하세요.`);
+      if (res.status === 402) {
+        setError(null);
+        redirectToPricing();
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(
+          await readApiError(res, `AI 생성 요청 실패 (HTTP ${res.status}). 잠시 후 다시 시도하세요.`)
+        );
+      }
       const newJob: Job = await res.json();
       setJobs((prev) => [newJob, ...prev]);
+      if (typeof newJob.remaining_credits === "number") {
+        updateCreditBalance(newJob.remaining_credits);
+      }
       setActiveJobId(newJob.id);
       setPrompt("");
     } catch (err) {
@@ -500,22 +758,19 @@ export default function DashboardPage() {
         const activeJob = activeJobId ? jobs.find((j) => j.id === activeJobId) ?? null : null;
         const isActive = activeJob && (activeJob.status === "pending" || activeJob.status === "processing");
         const isDone = activeJob?.status === "done";
+        const hasEnoughCredits = creditBalance === null || creditBalance >= creditCost;
 
         return (
           <div className="min-h-[calc(100vh-10rem)] flex flex-col items-center justify-center gap-5 max-w-2xl mx-auto w-full">
-
             {/* 프리뷰 카드 */}
             {activeJob && (
               <div className="w-full rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
                 {isActive ? (
-                  <div className="aspect-video w-full animate-shimmer flex flex-col items-center justify-center gap-3">
-                    <div className="w-8 h-8 rounded-full border-2 border-indigo-500/70 border-t-transparent animate-spin" />
-                    <span className="text-xs text-gray-500">
-                      {activeJob.status === "processing" ? "이미지 생성 중…" : "대기 중…"}
-                    </span>
+                  <div className="aspect-square w-full bg-gray-950/80 flex flex-col items-center justify-center">
+                    <PixelAgent status={activeJob.status as "pending" | "processing"} />
                   </div>
                 ) : isDone && activeJob.output_url ? (
-                  <div className="aspect-video w-full relative animate-fade-in">
+                  <div className="aspect-square w-full relative animate-fade-in">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={activeJob.output_url}
@@ -530,7 +785,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ) : activeJob.status === "failed" ? (
-                  <div className="aspect-video w-full flex flex-col items-center justify-center gap-2 bg-red-950/20">
+                  <div className="aspect-square w-full flex flex-col items-center justify-center gap-2 bg-red-950/20">
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-red-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
                     </svg>
@@ -563,7 +818,7 @@ export default function DashboardPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,video/*"
+                    accept="image/*"
                     className="hidden"
                     onChange={(e) => setAttachedFile(e.target.files?.[0] ?? null)}
                   />
@@ -602,7 +857,13 @@ export default function DashboardPage() {
                 <button
                   onClick={handleGenerate}
                   disabled={submitting || !prompt.trim()}
-                  title={!prompt.trim() ? "프롬프트를 입력하세요" : undefined}
+                  title={
+                    !prompt.trim()
+                      ? "프롬프트를 입력하세요"
+                      : !hasEnoughCredits
+                      ? `크레딧이 부족합니다. 클릭하면 요금제 페이지로 이동합니다`
+                      : undefined
+                  }
                   className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all px-5 py-2 rounded-xl font-semibold text-white text-sm shadow-lg shadow-indigo-900/40 active:scale-95"
                 >
                   {uploading ? "업로드 중…" : submitting ? "생성 중…" : "생성하기"}
@@ -691,5 +952,23 @@ export default function DashboardPage() {
         </section>
       )}
     </div>
+  );
+}
+
+function DashboardPageFallback() {
+  return (
+    <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="border border-gray-800 rounded-2xl bg-gray-900/40 p-8 text-sm text-gray-500">
+        대시보드를 불러오는 중입니다…
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<DashboardPageFallback />}>
+      <DashboardPageContent />
+    </Suspense>
   );
 }

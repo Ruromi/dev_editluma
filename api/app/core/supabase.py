@@ -4,7 +4,9 @@ Uses service_role key — never expose to the client.
 """
 import logging
 from functools import lru_cache
+from typing import Any
 
+import httpx
 from supabase import Client, create_client
 
 from app.core.config import settings
@@ -58,3 +60,38 @@ def db_schema() -> str:
             _resolved_schema = configured
 
     return _resolved_schema
+
+
+class RpcError(Exception):
+    def __init__(self, status_code: int, payload: Any):
+        self.status_code = status_code
+        self.payload = payload
+        super().__init__(str(payload))
+
+
+async def call_rpc(function_name: str, params: dict[str, Any], schema: str | None = None) -> Any:
+    active_schema = schema or db_schema()
+    url = f"{settings.supabase_url}/rest/v1/rpc/{function_name}"
+    headers = {
+        "apikey": settings.supabase_service_role_key,
+        "Authorization": f"Bearer {settings.supabase_service_role_key}",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Accept-Profile": active_schema,
+        "Content-Profile": active_schema,
+    }
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.post(url, headers=headers, json=params)
+
+    if response.is_success:
+        if not response.content:
+            return None
+        return response.json()
+
+    try:
+        payload: Any = response.json()
+    except ValueError:
+        payload = response.text
+
+    raise RpcError(response.status_code, payload)

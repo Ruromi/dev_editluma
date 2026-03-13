@@ -21,11 +21,11 @@ services:
   #   build: ./api
   #   env_file: ./api/.env
   #   ports:
-  #     - "8000:8000"
+  #     - "8010:8010"
   #   depends_on:
   #     redis:
   #       condition: service_healthy
-  #   command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+  #   command: uvicorn app.main:app --host 0.0.0.0 --port 8010 --reload
 
   # Uncomment to run Celery worker in Docker (optional)
   # worker:

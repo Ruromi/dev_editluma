@@ -8,8 +8,13 @@ import httpx
 
 from app.core.config import settings
 
-IDEOGRAM_BASE_URL = "https://api.ideogram.ai"
-_TIMEOUT = 120  # seconds
+
+def _base_url() -> str:
+    return (settings.ideogram_base_url or "https://api.ideogram.ai").rstrip("/")
+
+
+def _timeout_seconds() -> float:
+    return max(settings.ideogram_timeout_ms / 1000, 1)
 
 
 def _aspect_ratio(width: int, height: int) -> str:
@@ -46,10 +51,10 @@ def generate_image_bytes(prompt: str, width: int = 1024, height: int = 1024) -> 
         }
     }
 
-    with httpx.Client(timeout=_TIMEOUT) as client:
+    with httpx.Client(timeout=_timeout_seconds()) as client:
         # 1. Generate
         resp = client.post(
-            f"{IDEOGRAM_BASE_URL}/generate",
+            f"{_base_url()}/generate",
             headers={
                 "Api-Key": settings.ideogram_api_key,
                 "Content-Type": "application/json",

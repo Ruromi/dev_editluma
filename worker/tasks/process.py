@@ -1,7 +1,6 @@
 """
 Core processing task.
-Sprint 1: skeleton only — updates job status in Supabase.
-Sprint 2+: real AI processing (denoise / upscale / color / BGM).
+Image generation and enhancement worker.
 """
 import logging
 import os
@@ -13,13 +12,31 @@ from worker.celery_app import celery_app
 logger = logging.getLogger(__name__)
 
 
+def _groq_api_key() -> str:
+    return os.getenv("GROQ_API_KEY", "").strip()
+
+
+def _ideogram_base_url() -> str:
+    return (os.getenv("IDEOGRAM_BASE_URL", "https://api.ideogram.ai") or "https://api.ideogram.ai").rstrip("/")
+
+
+def _ideogram_timeout_seconds() -> float:
+    raw = (os.getenv("IDEOGRAM_TIMEOUT_MS", "120000") or "120000").strip()
+    try:
+        timeout_ms = int(raw)
+    except ValueError:
+        logger.warning("Invalid IDEOGRAM_TIMEOUT_MS=%r — falling back to 120000ms", raw)
+        timeout_ms = 120000
+    return max(timeout_ms / 1000, 1)
+
+
 def _translate_to_english(prompt: str) -> str:
     """한국어가 포함된 프롬프트를 영어로 번역. 영어면 그대로 반환."""
     import re
     if not re.search(r"[\uac00-\ud7a3]", prompt):
         return prompt
 
-    api_key = os.getenv("GROQ_API_KEY", "")
+    api_key = _groq_api_key()
     if not api_key:
         logger.warning("GROQ_API_KEY not set — using original prompt")
         return prompt
@@ -66,7 +83,7 @@ def _get_supabase():
 )
 def process_job(self: Task, job_id: str) -> dict:
     """
-    Entry point for all media processing jobs.
+    Entry point for image processing jobs.
     Reads job metadata from Supabase, dispatches to the correct pipeline,
     and updates status on completion/failure.
     """
@@ -75,7 +92,7 @@ def process_job(self: Task, job_id: str) -> dict:
 
     try:
         # Mark as processing
-        supabase.schema(schema).table("jobs").update({"status": "processing"}).eq(
+        supabase.schema(schema).table("jobs").update({"status": "processing", "error": None}).eq(
             "id", job_id
         ).execute()
 
@@ -92,10 +109,9 @@ def process_job(self: Task, job_id: str) -> dict:
         if not job:
             raise ValueError(f"Job {job_id} not found in DB")
 
-        job_type = job.get("type", "image")
         mode = job.get("mode")
 
-        # --- Pipeline dispatch (Sprint 2+) ---
+        # --- Pipeline dispatch ---
         if mode == "generate":
             output_key, enhanced_prompt = _generate_image(job)
             update_data = {
@@ -104,7 +120,7 @@ def process_job(self: Task, job_id: str) -> dict:
                 "original_prompt": job.get("prompt"),
                 "enhanced_prompt": enhanced_prompt,
             }
-        elif job_type == "image":
+        elif mode in (None, "enhance") and job.get("type", "image") == "image":
             output_key, translated_prompt = _enhance_image(job)
             update_data = {
                 "status": "done",
@@ -113,8 +129,7 @@ def process_job(self: Task, job_id: str) -> dict:
                 "enhanced_prompt": translated_prompt,
             }
         else:
-            output_key = _process_video(job)
-            update_data = {"status": "done", "output_key": output_key}
+            raise ValueError(f"Unsupported job type: {job.get('type')}")
 
         # Mark done
         supabase.schema(schema).table("jobs").update(update_data).eq(
@@ -126,18 +141,29 @@ def process_job(self: Task, job_id: str) -> dict:
 
     except Exception as exc:
         logger.exception("Job %s failed: %s", job_id, exc)
+        max_retries = self.max_retries or 0
+        if self.request.retries >= max_retries:
+            supabase.schema(schema).table("jobs").update(
+                {"status": "failed", "error": str(exc)}
+            ).eq("id", job_id).execute()
+            raise
+
         supabase.schema(schema).table("jobs").update(
-            {"status": "failed", "error": str(exc)}
+            {"status": "pending", "error": str(exc)}
         ).eq("id", job_id).execute()
         raise self.retry(exc=exc)
 
 
 # ---------------------------------------------------------------------------
-# Pipeline stubs — replace with real implementations in Sprint 2+
+# Image pipelines
 # ---------------------------------------------------------------------------
 
 def _enhance_image(job: dict) -> tuple[str, str]:
-    """Image enhance via Ideogram remix: uploaded image + prompt → new image.
+    """Image enhance via Ideogram V3 remix with character reference for face preservation.
+
+    The original photo is sent as both the remix base image AND as a
+    character_reference_image so that Ideogram locks the person's facial
+    identity while freely changing the scene/situation per the prompt.
 
     Returns:
         (output_key, translated_prompt)
@@ -152,8 +178,8 @@ def _enhance_image(job: dict) -> tuple[str, str]:
     if not api_key:
         raise RuntimeError("IDEOGRAM_API_KEY가 설정되지 않았습니다.")
 
-    model = os.getenv("IDEOGRAM_MODEL", "V_2")
-    prompt = _translate_to_english((job.get("prompt") or "high quality, detailed, professional").strip())
+    raw_prompt = (job.get("prompt") or "high quality, detailed, professional").strip()
+    prompt = _translate_to_english(raw_prompt)
 
     # 1. S3에서 원본 이미지 다운로드
     bucket = os.getenv("STORAGE_BUCKET", "editluma-uploads")
@@ -176,34 +202,39 @@ def _enhance_image(job: dict) -> tuple[str, str]:
     image_bytes = obj["Body"].read()
     content_type = obj.get("ContentType", "image/jpeg")
 
-    import json
-    logger.info("Calling Ideogram remix for job %s prompt=%r", job["id"], prompt)
+    logger.info("Calling Ideogram V3 remix (character ref) for job %s prompt=%r", job["id"], prompt)
 
-    image_request = json.dumps({
-        "prompt": prompt,
-        "model": model,
-        "aspect_ratio": "ASPECT_1_1",
-        "image_weight": 90,
-    })
-
-    # 2. Ideogram remix API 호출
-    with httpx.Client(timeout=120) as client:
+    # 2. Ideogram V3 remix API 호출
+    #    - image: remix 베이스 (원본 사진)
+    #    - character_reference_images: 얼굴/신원 고정용 (같은 사진)
+    #    - image_weight: 낮게 설정하여 장면 변경 허용 (얼굴은 character ref가 보존)
+    with httpx.Client(timeout=_ideogram_timeout_seconds()) as client:
         resp = client.post(
-            "https://api.ideogram.ai/remix",
+            f"{_ideogram_base_url()}/v1/ideogram-v3/remix",
             headers={"Api-Key": api_key},
-            data={"image_request": image_request},
-            files={"image_file": ("image", image_bytes, content_type)},
+            data={
+                "prompt": prompt,
+                "image_weight": "35",
+                "rendering_speed": "DEFAULT",
+                "magic_prompt": "ON",
+                "aspect_ratio": "1x1",
+                "num_images": "1",
+            },
+            files=[
+                ("image", ("source.jpg", image_bytes, content_type)),
+                ("character_reference_images", ("face_ref.jpg", image_bytes, content_type)),
+            ],
         )
         try:
             resp.raise_for_status()
         except httpx.HTTPStatusError as exc:
             body = exc.response.text[:300]
-            raise RuntimeError(f"Ideogram remix 오류 ({exc.response.status_code}): {body}") from exc
+            raise RuntimeError(f"Ideogram V3 remix 오류 ({exc.response.status_code}): {body}") from exc
 
         data = resp.json()
         items = data.get("data") or []
         if not items:
-            raise RuntimeError("Ideogram remix API가 이미지를 반환하지 않았습니다.")
+            raise RuntimeError("Ideogram V3 remix API가 이미지를 반환하지 않았습니다.")
 
         image_url: str = items[0]["url"]
 
@@ -252,10 +283,10 @@ def _generate_image(job: dict) -> tuple[str, str]:
 
     logger.info("Calling Ideogram for job %s prompt=%r model=%s", job["id"], prompt, model)
 
-    with httpx.Client(timeout=120) as client:
+    with httpx.Client(timeout=_ideogram_timeout_seconds()) as client:
         # 1. Request generation
         resp = client.post(
-            "https://api.ideogram.ai/generate",
+            f"{_ideogram_base_url()}/generate",
             headers={"Api-Key": api_key, "Content-Type": "application/json"},
             json={
                 "image_request": {
@@ -300,13 +331,6 @@ def _generate_image(job: dict) -> tuple[str, str]:
     _upload_bytes_to_s3(output_key, image_bytes, "image/png")
     logger.info("Uploaded generated image to %s for job %s", output_key, job["id"])
     return output_key, enhanced_prompt
-
-
-def _process_video(job: dict) -> str:
-    """Video pipeline: denoise → color → stabilize → BGM insertion."""
-    logger.info("Video pipeline for job %s (stub)", job["id"])
-    # TODO: integrate FFmpeg + BGM model
-    return job["object_key"].replace("uploads/", "outputs/", 1)
 
 
 def _upload_bytes_to_s3(object_key: str, data: bytes, content_type: str) -> None:

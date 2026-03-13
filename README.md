@@ -33,8 +33,8 @@ pip install -r requirements.txt
 
 cp .env.example .env   # Supabase URL, service_role key, Storage 키 입력
 
-uvicorn app.main:app --reload --port 8000
-# → http://localhost:8000/docs
+uvicorn app.main:app --reload --port 8010
+# → http://localhost:8010/docs
 ```
 
 ### 2. Celery 워커
@@ -72,7 +72,7 @@ supabase/migrations/0001_init_dev_schema.sql
 | `NEXT_PUBLIC_SUPABASE_URL` | web | Supabase 프로젝트 URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | web | 브라우저 클라이언트 (공개 가능) |
 | `SUPABASE_SERVICE_ROLE_KEY` | api | 서버 전용 — **절대 노출 금지** |
-| `SUPABASE_SCHEMA` | api | `dev` (dev) / `public` (prod) |
+| `SUPABASE_SCHEMA` | api | 기본값 `public` (권장), `dev`는 명시적으로 노출한 경우에만 사용 |
 | `STORAGE_ACCESS_KEY` | api | S3 호환 스토리지 액세스 키 |
 | `STORAGE_SECRET_KEY` | api | S3 호환 스토리지 시크릿 키 |
 | `REDIS_URL` | api/worker | Redis 연결 URL |
@@ -116,7 +116,7 @@ supabase/migrations/0001_init_dev_schema.sql
 | POST | `/api/ai/enhance` | `{object_key, prompt?}` | 업로드 파일 AI 보정 |
 | POST | `/api/ai/generate` | `{prompt, width?, height?}` | 프롬프트 기반 AI 이미지 생성 |
 
-전체 문서: `http://localhost:8000/docs`
+전체 문서: `http://localhost:8010/docs`
 
 ### DB 마이그레이션 (Sprint 2)
 
@@ -124,6 +124,15 @@ Supabase 대시보드 → SQL Editor에서 추가 실행:
 
 ```
 supabase/migrations/0002_add_mode_prompt.sql
+```
+
+### DB 마이그레이션 (Credits 준비)
+
+사용자별 크레딧 잔액과 작업 소유자를 저장하려면 추가 실행:
+
+```
+supabase/migrations/0005_add_user_credits.sql
+supabase/migrations/0006_add_credit_ledger.sql
 ```
 
 ## 로컬 트러블슈팅
