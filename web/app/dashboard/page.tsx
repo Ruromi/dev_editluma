@@ -345,10 +345,10 @@ function ImageDetailModal({ job, onClose }: { job: Job; onClose: () => void }) {
             </p>
           </div>
 
-          {/* AI 보정 프롬프트 */}
+          {/* 모델에 전달된 프롬프트 */}
           <div className="space-y-1.5">
             <h3 className="text-xs font-semibold text-indigo-500 uppercase tracking-wider">
-              AI 보정 프롬프트
+              모델에 전달된 프롬프트
             </h3>
             <p className="text-sm text-indigo-600 leading-relaxed">
               {enhancedPrompt || "—"}
