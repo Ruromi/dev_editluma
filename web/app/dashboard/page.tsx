@@ -718,6 +718,7 @@ function DashboardPageContent() {
         try {
           putRes = await fetch(upload_url, {
             method: "PUT",
+            headers: { "Content-Type": attachedFile.type },
             body: attachedFile,
           });
         } catch {
